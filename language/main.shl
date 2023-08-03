@@ -1,0 +1,99 @@
+function main(arg1, arg2, arg3):  
+    let a = 3
+    print(a) 
+    if a == 3: 
+        print("A equals to three")
+    else: 
+        print("A does not equal to three")
+
+special_tokens(
+    (/\#$%*)
+)
+
+captureNextToken(c => {
+
+})
+
+
+
+_function
+    _variable
+    _methodcall 
+    _conditional
+        _methodcall 
+    _conditional_else 
+        _methodcall 
+    
+a == 2
+a == b 
+a != b 
+a == b && a == a 
+(a == 3 || a == 5) && a == 5
+
+
+pattern expression
+escapesCaptureBy
+
+groupby
+
+
+pattern _conditional
+like 
+    if e: 
+where 
+    "if" is KEYWORD,
+    "e" is pattern(expression) & is LISTED(),
+    ":" is SYNTAX,
+
+
+
+pattern function
+like 
+    function name(arg1)
+where 
+    "function" is KEYWORD, 
+    "name" is ALPHABETICAL, 
+    "(" is SYNTAX,
+    "arg1" is LISTED(",", true),
+    ")" is SYNTAX 
+
+
+
+const matches = sParser.matches(
+    choose(
+        keyword("public"), 
+        keyword("private"), 
+        keyword("protected"),
+    ),
+    swappable(
+        optional(keyword("static")),
+        keyword("void"),
+    ),
+    text(alphabet()),
+    syntax("(")
+)
+
+<page backgroundColor="red"/>
+.page { 
+    background-color: red; 
+    color: ${color};
+    width: ${getWidth()}
+
+    js { 
+        export color; 
+
+        this.style.backgroundColor = 'red' || props.backgroundColor; 
+
+        export function doSomething() { 
+            color: yellow 
+            & > .subDiv { 
+                background-color: red; 
+            }
+        }
+        export function doSomethingElse() { 
+            color: "green"
+        }
+
+        
+    }
+}
