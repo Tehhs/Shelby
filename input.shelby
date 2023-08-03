@@ -1,0 +1,9 @@
+:age 25 
+
+if age >= 20 then 
+    print("Liam is really old!")
+else 
+    print("Liam is not old")
+end 
+
+

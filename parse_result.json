@@ -1,0 +1,41 @@
+[
+ {
+  "type": "var_decl",
+  "name": "age",
+  "contents": ":age 25",
+  "variable": {
+   "type": "number",
+   "contents": 25
+  }
+ },
+ {
+  "type": "if_condition",
+  "condition": "age >= 20",
+  "if": [
+   {
+    "type": "method_call",
+    "value": {
+     "type": "tmp_call",
+     "value": {
+      "type": "string",
+      "contents": "\"Liam is really old!\""
+     }
+    },
+    "methodName": "print"
+   }
+  ],
+  "else": [
+   {
+    "type": "method_call",
+    "value": {
+     "type": "tmp_call",
+     "value": {
+      "type": "string",
+      "contents": "\"Liam is not old\""
+     }
+    },
+    "methodName": "print"
+   }
+  ]
+ }
+]

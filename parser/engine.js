@@ -283,20 +283,38 @@ export function findAndSegment(segments, tokenTypes, func) {
             if(selectedTokenTypeIndex >= satisfiedTokenTypes.length) /*All token types satisfied?*/ break; 
             // console.log("THE INDEX", selectedTokenTypeIndex)
             total = stringExpandedSegents.slice(startStringIndex, endStringIndex)
+            
             // console.log("NEW TOTAL", total)
             // console.log(">>", total.join(" "))
-            const validator = selectedTokenType.tokenType 
-            const result = validator(total, total[total.length-1])
-            let truthValidator = undefined 
-            if(typeof(result)=='function') { 
-                truthValidator = result 
-                result = true 
+            let validator = selectedTokenType.tokenType 
+            let infoObject = undefined 
+            let truthFunction = undefined 
+            if(typeof(validator) == "object") { 
+                infoObject = validator
+                validator = infoObject.validator
+                truthFunction = infoObject.truthFunction
             }
+            const result = validator(total, total[total.length-1])
 
             selectedTokenType.satisfied = result 
 
+            const reset = () => { 
+                // console.log("resetting")
+                // startStringIndex = endStringIndex - 1//CHANGE -1
+                startStringIndex = initialStartIndex+1
+                initialStartIndex++ 
+                endStringIndex = startStringIndex
+                
+                selectedTokenTypeIndex = 0 
+                for(const t of satisfiedTokenTypes) { 
+                    t.satisfied = false 
+                    t.wasSatisfied = false 
+                    t.satisfiedState = undefined //#todo append default state object to avoid duplicate logic 
+                    t.lastSatisfiedSelectionStart = defaultState.lastSatisfiedSelectionStart 
+                    t.lastSatisfiedSelectionEnd = defaultState.lastSatisfiedSelectionStart 
+                }
+            }
             
-
 
             if(result == true) {
                 // console.log("SATISFIED", selectedTokenType.tokenType, total, total[total.length-1], startStringIndex, endStringIndex)
@@ -314,8 +332,13 @@ export function findAndSegment(segments, tokenTypes, func) {
             if((selectedTokenType.wasSatisfied == true && selectedTokenType.satisfied == false)
                 || (isLast) /*End of for*/) { 
                     
+                let cut = total.slice(0, isLast ? total.length : total.length-1)
+                if(truthFunction != undefined && truthFunction(cut) == false) { 
+                    reset() 
+                    continue 
+                }
                 // console.log("MATCH", selectedTokenType.wasSatisfied == true && selectedTokenType.satisfied == false, selectedTokenType.wasSatisfied == true && (endStringIndex) >= stringExpandedSegents.length)
-                selectedTokenType.satisfiedState = total.slice(0, isLast ? total.length : total.length-1)
+                selectedTokenType.satisfiedState = cut
                 // console.log
                 endStringIndex -= 1; 
                 selectedTokenTypeIndex++; 
@@ -325,20 +348,7 @@ export function findAndSegment(segments, tokenTypes, func) {
 
             //current token not matching with tokenmatch, reset tokenmatch progress and start again from next token 
             if(selectedTokenType.wasSatisfied == false && selectedTokenType.satisfied == false) { 
-                // console.log("resetting")
-                // startStringIndex = endStringIndex - 1//CHANGE -1
-                startStringIndex = initialStartIndex+1
-                initialStartIndex++ 
-                endStringIndex = startStringIndex
-                
-                selectedTokenTypeIndex = 0 
-                for(const t of satisfiedTokenTypes) { 
-                    t.satisfied = false 
-                    t.wasSatisfied = false 
-                    t.satisfiedState = undefined //#todo append default state object to avoid duplicate logic 
-                    t.lastSatisfiedSelectionStart = defaultState.lastSatisfiedSelectionStart 
-                    t.lastSatisfiedSelectionEnd = defaultState.lastSatisfiedSelectionStart 
-                }
+                reset() 
                 continue; 
             }
             // console.log("NEXT LOOP")
