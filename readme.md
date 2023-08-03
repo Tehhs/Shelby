@@ -1,4 +1,4 @@
-#Shelby 
+# Shelby 
 
 Shelby is a programming language built for fun with no parsing library (pure javascript). The language is intended to transpile to both python and javascript, so the same code can run in the browser or locally on a machine. This language is not intended for production.
 
