@@ -8,7 +8,7 @@ export function segmentReplace(segArray, selectionVec, replacement) {
             if(seg.length > 1) { 
                 newSeg = seg.split("")
             } else { 
-                newSeg = seg 
+                newSeg = [seg]
             }
         }
         if(typeof(seg) == "object") { 
