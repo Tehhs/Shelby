@@ -98,6 +98,68 @@ export class SegmentList {
         this.segments = newSegments
     
     }
+
+    transform(name) { 
+
+    }
+
+    find(TokenFunctions) { 
+        const eSegments = this._getExpandedSegents()
+
+        let satisfiedTokenFunctions = []
+        function setTokenFunctionsDefault() { 
+            satisfiedTokenFunctions = TokenFunctions.map(tf => { 
+                return { 
+                    satisfied: false, 
+                    wasSatisfied: false, 
+                    func: tf, 
+                    state: undefined 
+                }
+            })
+        }
+        setTokenFunctionsDefault() 
+
+        let startIndex = 0
+        let size = 1 
+        let tokenFunctionsIndex = 0 
+        for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
+            if(startIndex + size > eSegments.length) continue; 
+            const subExtendedSegments = eSegments.slice(startIndex, startIndex+size)
+
+            let tokenOperation = satisfiedTokenFunctions[tokenFunctionsIndex]?.func(subExtendedSegments)
+            if(tokenOperation == undefined) { 
+                throw new Error("Got Undefined TokenOperation")
+            }
+
+            if(tokenOperation == TokenOperations.LOAD) { 
+
+            }
+
+            if(tokenOperation == TokenOperations.SAVE) { 
+                
+            }
+
+            if(tokenOperation == TokenOperations.IGNORE) { 
+                
+            }
+
+            if(tokenOperation == TokenOperations.PASS) { 
+                
+            }
+        }
+    }
+
+    _getExpandedSegents() { 
+        let expandedSegmentArray = []
+        for(const seg of this.segments) { 
+            if(typeof(seg) == "string") { 
+                expandedSegmentArray = [...expandedSegmentArray, ...seg.split("")]
+            } else { 
+                expandedSegmentArray.push(seg)
+            }
+        }
+        return expandedSegmentArray
+    }
     
 }
 
@@ -144,14 +206,8 @@ export class TokenFunction {
 }
 
 
-const STR_MATCH = function(str) { 
-    return TokenFunction.from((total, n)=>{
-        if(total.join("") == str) return TokenOperations.SAVE 
-        return TokenOperations.LOAD
-    }) 
-}
-
-const tFunction = STR_MATCH("abcd").name("type").propagate()
-console.log(tFunction.call(["a", "b", "c"], "c"))
-
-//NUMBER_TYPE().name("value").propagate()
+const sList = new SegmentList(); 
+sList.append(["My name is ", {name: "Liam"}, "Liam"])
+sList.find([(total)=>{
+    return TokenOperations.LOAD
+}]) 
