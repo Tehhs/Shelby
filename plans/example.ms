@@ -1,6 +1,6 @@
 
 let 0<i<10 = minimum, i=x*2
-let b = $i 
+let b = $i / 2
 object c = {num: i}
 number index, 
 

@@ -7,14 +7,17 @@ Warning: As of writing, compilation barley work. The project is still in heavy d
 Below is some basic syntax. A lot of stylistic choices were borrowed from python, lua and javascript. 
 
 ```js 
-:name "Liam" 
-:age 25 
 
-if age >= 20 then 
-    print(":name is old")
-else 
-    print(":age is young!")
+let 0<i<10 = 0
+let b = $i / 2
+object c = {num: i}
+number index
+
+once $i && $b then 
+    print("Index =", b)
+    i++ or throw 
 end 
+
 ```
 
 # Instructions 
