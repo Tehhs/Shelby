@@ -105,6 +105,13 @@ export class SegmentList {
     }
 
     find(TokenFunctions) { 
+        //check to make sure all "TokenFunctions" are indeed instanceof TokenFunction 
+        for(const tf of TokenFunctions) { 
+            if( !(tf instanceof TokenFunction) ) { 
+                throw new Error(`${tf} is not a TokenFunction`)
+            }
+        }
+
         const eSegments = this._getExpandedSegents()
 
         let satisfiedTokenFunctions = []
@@ -112,7 +119,8 @@ export class SegmentList {
             satisfiedTokenFunctions = TokenFunctions.map(tf => { 
                 return { 
                     satisfied: false,
-                    func: tf, 
+                    func: tf.getFunc(), 
+                    tfFunc: tf,
                     state: undefined, 
                     cutStart: undefined, 
                     cutEnd: undefined 
@@ -170,9 +178,10 @@ export class SegmentList {
                 }
 
                 if(tokenOperation == TokenOperations.LOAD) { 
-                    saveState(tempState, startIndex, endIndex)
+                    saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
                     satisfy() 
                     nextTokenFunction() 
+                    reset()
 
                     tempState = []
                     tempStateCutLocations = [] 
@@ -260,6 +269,9 @@ export class TokenFunction {
         }
         this._func = func 
     }
+    getFunc() { 
+        return this._func; 
+    }
 
     name(name) { 
         this._name = name 
@@ -279,17 +291,42 @@ export class TokenFunction {
     }
 }
 
+const StringMatch = (str) => { 
+    return TokenFunction.from((state) => { 
+        if(state.join("") == str) { 
+            return TokenOperations.ACCEPT; 
+        }  
+            
+        if(state.length > str.length) { 
+            return TokenOperations.REJECT
+        }
+    
+        return TokenOperations.SAVE; 
+        
+    })
+}
+
+const Alphabetical = () => { 
+    return TokenFunction.from((state)=>{
+        const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
+        for(const c of state) {
+            if(typeof(c) == 'object' || Array.isArray(c)) { 
+                return TokenOperations.LOAD; 
+            }
+            if(!allowed.includes(c)) { 
+                return TokenOperations.LOAD; 
+            }
+        }
+        return TokenOperations.SAVE;
+    })
+}
+
+
 
 const sList = new SegmentList(); 
-sList.append(["My name is ", {name: "Liam"}, "Liam"])
-sList.find([(total)=>{
-    if(total.join("") == "name") { 
-        return TokenOperations.ACCEPT; 
-    }  
-        
-    if(total.length > 4) { 
-        return TokenOperations.REJECT
-    }
+sList.append(["My name name fis ", {name: "Liam"}, "Liam"])
 
-    return TokenOperations.SAVE; 
-}]) 
+sList.find([
+    //StringMatch("name ").name("text").propagate()
+    Alphabetical().name("words").propagate() 
+]) 
