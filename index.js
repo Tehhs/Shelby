@@ -24,6 +24,8 @@ strArray = [fs.readFileSync("./input.shelby", {encoding: "utf-8"})]
  * ]}
  */
 
+
+
 //process all the strings 
 const nSegments = captureStrings(strArray)
 //replace all the bad formatting 

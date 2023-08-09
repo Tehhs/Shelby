@@ -1,10 +1,11 @@
 import { split } from "./parser_functions.js"
 
 export const TokenOperations = {
-    IGNORE: "IGNORE", 
-    PASS: "PASS", 
+    IGNORE: "IGNORE", //ignore tokenFunction, go to next TokenFunction
     SAVE: "SAVE", 
-    LOAD: "LOAD"
+    LOAD: "LOAD",
+    ACCEPT: "ACCEPT",
+    REJECT: "REJECT" 
 }
 
 export class SegmentList { 
@@ -110,44 +111,117 @@ export class SegmentList {
         function setTokenFunctionsDefault() { 
             satisfiedTokenFunctions = TokenFunctions.map(tf => { 
                 return { 
-                    satisfied: false, 
-                    wasSatisfied: false, 
+                    satisfied: false,
                     func: tf, 
-                    state: undefined 
+                    state: undefined, 
+                    cutStart: undefined, 
+                    cutEnd: undefined 
                 }
             })
         }
         setTokenFunctionsDefault() 
 
         let startIndex = 0
-        let size = 1 
         let tokenFunctionsIndex = 0 
-        for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
-            if(startIndex + size > eSegments.length) continue; 
-            const subExtendedSegments = eSegments.slice(startIndex, startIndex+size)
+        let tempState = []
+        let tempStateCutLocations = []
 
-            let tokenOperation = satisfiedTokenFunctions[tokenFunctionsIndex]?.func(subExtendedSegments)
-            if(tokenOperation == undefined) { 
-                throw new Error("Got Undefined TokenOperation")
-            }
-
-            if(tokenOperation == TokenOperations.LOAD) { 
-
-            }
-
-            if(tokenOperation == TokenOperations.SAVE) { 
-                
-            }
-
-            if(tokenOperation == TokenOperations.IGNORE) { 
-                
-            }
-
-            if(tokenOperation == TokenOperations.PASS) { 
-                
+        function getCurrentTokenFunction() { 
+            return satisfiedTokenFunctions[tokenFunctionsIndex]
+        }
+        function saveState(state , cutStart, cutEnd) { 
+            getCurrentTokenFunction().state = [...state]
+            getCurrentTokenFunction().cutStart = cutStart 
+            getCurrentTokenFunction().cutEnd = cutEnd 
+        }
+        function satisfy(satisfied=true) { 
+            getCurrentTokenFunction().satisfied = satisfied
+        }
+        function nextTokenFunction() { 
+            if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) { 
+                return false 
+            }; 
+            tokenFunctionsIndex++ 
+            return true
+        }
+        function reset(resetTokenFunctionIndex=false) { 
+            tempState = []
+            tempStateCutLocations = []
+            if(resetTokenFunctionIndex) { 
+                tokenFunctionsIndex = 0 
             }
         }
+        
+        let rejected = false 
+        for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
+
+            for(let endIndex = startIndex + 1; endIndex < eSegments.length; endIndex++) { 
+                const subExtendedSegments = eSegments.slice(startIndex, endIndex)
+
+                
+
+                if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) break; 
+                let currentTokenObject = satisfiedTokenFunctions[tokenFunctionsIndex]
+                let satisfyFunction = currentTokenObject.func
+
+                let tokenOperation = satisfyFunction(subExtendedSegments)
+                if(tokenOperation == undefined) { 
+                    throw new Error("Got Undefined TokenOperation")
+                }
+
+                if(tokenOperation == TokenOperations.LOAD) { 
+                    saveState(tempState, startIndex, endIndex)
+                    satisfy() 
+                    nextTokenFunction() 
+
+                    tempState = []
+                    tempStateCutLocations = [] 
+
+                    startIndex = endIndex
+                    continue
+                }
+
+                if(tokenOperation == TokenOperations.SAVE) { 
+                    tempState = [...subExtendedSegments]
+                    tempStateCutLocations = [startIndex, endIndex]
+                    continue 
+                }
+
+                //ignore this token and reset, for optional,
+                //skip the optional token 
+                if(tokenOperation == TokenOperations.IGNORE) { 
+                    satisfy() 
+                    nextTokenFunction() 
+                    reset() 
+
+                    endIndex = startIndex
+                    tokenFunctionsIndex++ 
+                    continue 
+                }
+
+                //ACCEPT AND PROCESS THE CURRENT TOKEN 
+                if(tokenOperation == TokenOperations.ACCEPT) { 
+                    saveState([...subExtendedSegments], startIndex, endIndex)
+                    satisfy() 
+                    nextTokenFunction() 
+                    reset() 
+
+                    startIndex = endIndex
+                    continue 
+                }
+
+                //ACCEPT AND PROCESS THE CURRENT TOKEN 
+                if(tokenOperation == TokenOperations.REJECT) { 
+                    reset(true) 
+                    setTokenFunctionsDefault() 
+                    break
+                }
+
+            }
+        }
+        console.log(satisfiedTokenFunctions)
     }
+    
 
     _getExpandedSegents() { 
         let expandedSegmentArray = []
@@ -209,5 +283,13 @@ export class TokenFunction {
 const sList = new SegmentList(); 
 sList.append(["My name is ", {name: "Liam"}, "Liam"])
 sList.find([(total)=>{
-    return TokenOperations.LOAD
+    if(total.join("") == "name") { 
+        return TokenOperations.ACCEPT; 
+    }  
+        
+    if(total.length > 4) { 
+        return TokenOperations.REJECT
+    }
+
+    return TokenOperations.SAVE; 
 }]) 
