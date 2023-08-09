@@ -23,3 +23,40 @@ end
 # Instructions 
 
 Put your code in input.shelby, and run with `node .`. Right now, all it does it transpile some basic variable declarations and conditional statements, transpiles to javascript and runs the code. 
+
+# Custom Parser 
+
+As mentioned, this project makes use of a custom parser. Code for this parser can be found in /parser/engine. The parser is being rebuilt as it the old one sucked. Using the parser in the future should look something like this while parsing a simple Java method declaration. 
+
+```js
+Segments.find([
+    OR(StringMatch("public"), StringMatch("protected")),
+    Opt(StringMatch("static")).name("static").propagte(),
+    StringMatch("void"), 
+    FunctionName().name("FunctionName").propagate()
+    MethodBlock().name("method_block").propagate(),
+    Opt(StringMatch(",")).reset() 
+).transform("method") 
+```
+
+Should be transformed into the below json (or something like this)
+
+```json
+{
+    "type": "method", 
+    "inner": [
+        {
+            "name": "static",
+            "value": "static"
+        },
+        {
+            "name": "FunctionName",
+            "value": "main"
+        },
+        {
+            "name": "method_block", 
+            "value": ...
+        }
+    ]
+}
+```
