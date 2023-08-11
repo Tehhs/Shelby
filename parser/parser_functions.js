@@ -1,4 +1,97 @@
 
+
+export function segmentReplace(segArray, selectionVec, replacement) { 
+    let newSegArray = []
+    for(const seg of segArray) { 
+        let newSeg = []
+        if(typeof(seg) == "string") { 
+            if(seg.length > 1) { 
+                newSeg = seg.split("")
+            } else { 
+                newSeg = [seg]
+            }
+        }
+        if(typeof(seg) == "object") { 
+            newSeg = [seg] 
+        }
+        newSegArray = [...newSegArray, ...newSeg]
+    }
+
+
+    if(selectionVec.length != 2) {
+        throw new Error("Selection vector is not equal to 2; Doesnt make sense")
+    }
+
+    if(!Array.isArray(replacement)) { 
+        replacement = [replacement]
+    }
+    let retSegArray = [
+        ...newSegArray.slice(0, selectionVec[0]),
+        ...replacement, 
+        ...newSegArray.slice(selectionVec[1], newSegArray.length)
+    ]
+
+    //compress all the chars into strings 
+    const compress = true 
+    if(compress == true) { 
+        retSegArray = compactSegments(retSegArray)
+    }
+
+   // console.log("IN FUNC", retSegArray, segArray, selectionVec, replacement)
+    
+
+
+
+    return retSegArray
+
+
+}
+
+
+export function compactSegments(extendedSegments) {
+    const compressedSegArray = []
+
+    const objectIndexes = []
+    extendedSegments.forEach( (ele, i) => {
+        if(typeof(ele) == "object") { 
+            objectIndexes.push(i)
+        }
+    })
+
+    let last = 0 
+    for(let i = 0; i < objectIndexes.length; i++) { 
+        let _index = objectIndexes[i]
+        let obj = extendedSegments[_index]
+        const compressedString = extendedSegments.slice(last, _index).join("")
+        if(compressedString.length > 0) compressedSegArray.push(compressedString)
+        compressedSegArray.push(obj)
+
+        last = _index + 1 
+    }
+
+
+    //apparently this fixes stuff even after verifying this doesnt do anything via testing? even tho it makes sense to put this condition here 
+    if(last < extendedSegments.length) { 
+        let lastCompressedString = extendedSegments.slice(last, extendedSegments.length).join("")
+        compressedSegArray.push(lastCompressedString)
+    }
+
+    
+
+    return compressedSegArray
+}
+
+export function expandSegments(segments) { 
+    let expandedSegmentArray = []
+    for(const seg of segments) { 
+        if(typeof(seg) == "string") { 
+            expandedSegmentArray = [...expandedSegmentArray, ...seg.split("")]
+        } else { 
+            expandedSegmentArray.push(seg)
+        }
+    }
+    return expandedSegmentArray
+}
 export function split(str, pointArrays, func) { 
     if(pointArrays.length <= 0) return str
     //filter the points 
@@ -69,79 +162,4 @@ export function split(str, pointArrays, func) {
 
     
     return combinedSegmentes
-}
-
-export function segmentReplace(segArray, selectionVec, replacement) { 
-    let newSegArray = []
-    for(const seg of segArray) { 
-        let newSeg = []
-        if(typeof(seg) == "string") { 
-            if(seg.length > 1) { 
-                newSeg = seg.split("")
-            } else { 
-                newSeg = [seg] 
-            }
-        }
-        if(typeof(seg) == "object") { 
-            newSeg = [seg] 
-        }
-        newSegArray = [...newSegArray, ...newSeg]
-    }
-
-
-    if(selectionVec.length != 2) {
-        throw new Error("Selection vector is not equal to 2; Doesnt make sense")
-    }
-
-    if(!Array.isArray(replacement)) { 
-        replacement = [replacement]
-    }
-    let retSegArray = [
-        ...newSegArray.slice(0, selectionVec[0]),
-        ...replacement, 
-        ...newSegArray.slice(selectionVec[1], newSegArray.length)
-    ]
-
-    //compress all the chars into strings 
-    const compress = true 
-    if(compress == true) { 
-        const compressedSegArray = []
-        const objectIndexes = []
-        retSegArray.forEach( (ele, i) => {
-            if(typeof(ele) == "object") { 
-                objectIndexes.push(i)
-            }
-        })
-
-        let last = 0 
-        for(let i = 0; i < objectIndexes.length; i++) { 
-            let _index = objectIndexes[i]
-            let obj = retSegArray[_index]
-            const compressedString = retSegArray.slice(last, _index).join("")
-            if(compressedString.length > 0) compressedSegArray.push(compressedString)
-            compressedSegArray.push(obj)
-
-            last = _index + 1 
-        }
-
-
-        //apparently this fixes stuff even after verifying this doesnt do anything via testing? even tho it makes sense to put this condition here 
-        if(last < retSegArray.length) { 
-            let lastCompressedString = retSegArray.slice(last, retSegArray.length).join("")
-            compressedSegArray.push(lastCompressedString)
-        }
-
-        
-
-        retSegArray = compressedSegArray
-    }
-
-   // console.log("IN FUNC", retSegArray, segArray, selectionVec, replacement)
-    
-
-
-
-    return retSegArray
-
-
 }

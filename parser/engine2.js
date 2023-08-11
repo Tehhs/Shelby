@@ -1,4 +1,4 @@
-import { split } from "./parser_functions.js"
+import { expandSegments, split } from "./parser_functions.js"
 
 export const TokenOperations = {
     IGNORE: "IGNORE", //ignore tokenFunction, go to next TokenFunction
@@ -112,7 +112,7 @@ export class SegmentList {
             }
         }
 
-        const eSegments = this._getExpandedSegents()
+        const eSegments = expandSegments(this.segments)
 
         let satisfiedTokenFunctions = []
         function setTokenFunctionsDefault() { 
@@ -229,19 +229,6 @@ export class SegmentList {
             }
         }
         console.log(satisfiedTokenFunctions)
-    }
-    
-
-    _getExpandedSegents() { 
-        let expandedSegmentArray = []
-        for(const seg of this.segments) { 
-            if(typeof(seg) == "string") { 
-                expandedSegmentArray = [...expandedSegmentArray, ...seg.split("")]
-            } else { 
-                expandedSegmentArray.push(seg)
-            }
-        }
-        return expandedSegmentArray
     }
     
 }
