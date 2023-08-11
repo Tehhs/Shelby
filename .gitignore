@@ -1,1 +1,3 @@
 parse_result.json
+node_modules
+node_modules/*
