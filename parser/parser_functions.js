@@ -47,6 +47,46 @@ export function segmentReplace(segArray, selectionVec, replacement) {
 
 }
 
+export function isIntersecting(ranges) { 
+    return false //temp value, will fix later #TODO
+}
+/**
+ * Assumes no intersections between the selection vectors 
+ * @param {*} segArray 
+ * @param {*} selectionVectorsAndReplacements 
+ */
+export function multiSegmentReplace(segArray, selectionVectorsAndReplacements) { 
+    if(isIntersecting(selectionVectorsAndReplacements)) { 
+        throw new Error("Cannot process intersecting vectors!")
+    }
+    
+    selectionVectorsAndReplacements = selectionVectorsAndReplacements.sort( 
+        (a,b) => a[0] - b[0]
+    )
+
+    let newSegArray = []
+    let adjustment = 0
+    let lastEnd = 0 
+    for(let i = 0; i < selectionVectorsAndReplacements.length; i++) { 
+        let selStart = selectionVectorsAndReplacements[i][0] 
+        let selEnd = selectionVectorsAndReplacements[i][1] 
+        let selReplacement = selectionVectorsAndReplacements[i][2] 
+        
+        if(Array.isArray(selReplacement)) { 
+            newSegArray = [...newSegArray, ...segArray.slice(lastEnd, selStart), ...selReplacement]
+        } else { 
+            newSegArray = [...newSegArray, ...segArray.slice(lastEnd, selStart), selReplacement]
+        }
+        
+
+        lastEnd = selEnd
+    }
+    newSegArray = [...newSegArray, ...segArray.slice(lastEnd, segArray.length)]
+
+    return newSegArray
+}
+
+
 
 export function compactSegments(extendedSegments) {
     const compressedSegArray = []

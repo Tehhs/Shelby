@@ -1,0 +1,69 @@
+[
+ [
+  {
+   "satisfied": true,
+   "tfFunc": {
+    "_name": "words",
+    "_propagate": true,
+    "functionName": "Alphabetical"
+   },
+   "state": [
+    "M",
+    "y"
+   ],
+   "cutStart": 0,
+   "cutEnd": 2
+  },
+  {
+   "satisfied": true,
+   "tfFunc": {
+    "_propagate": false,
+    "functionName": "StringMatch(PEANUT)"
+   },
+   "state": [
+    "P",
+    "E",
+    "A",
+    "N",
+    "U",
+    "T"
+   ],
+   "cutStart": 3,
+   "cutEnd": 9
+  }
+ ],
+ [
+  {
+   "satisfied": true,
+   "tfFunc": {
+    "_name": "words",
+    "_propagate": true,
+    "functionName": "Alphabetical"
+   },
+   "state": [
+    "a",
+    "m",
+    "e"
+   ],
+   "cutStart": 16,
+   "cutEnd": 19
+  },
+  {
+   "satisfied": true,
+   "tfFunc": {
+    "_propagate": false,
+    "functionName": "StringMatch(PEANUT)"
+   },
+   "state": [
+    "P",
+    "E",
+    "A",
+    "N",
+    "U",
+    "T"
+   ],
+   "cutStart": 20,
+   "cutEnd": 26
+  }
+ ]
+]

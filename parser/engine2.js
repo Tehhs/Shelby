@@ -1,4 +1,5 @@
-import { expandSegments, split } from "./parser_functions.js"
+import { compactSegments, expandSegments, multiSegmentReplace, split } from "./parser_functions.js"
+import fs from 'fs'
 
 export const TokenOperations = {
     IGNORE: "IGNORE", //ignore tokenFunction, go to next TokenFunction
@@ -8,6 +9,71 @@ export const TokenOperations = {
     REJECT: "REJECT" 
 }
 
+export class TransformerListing { 
+    constructor(start, end, tokenFunctionArray) { 
+        this.start = start
+        this.end = end
+        this.satisfiedTokenFunctions = tokenFunctionArray 
+    }
+}
+export class Transformer { 
+    
+    /**
+     * 
+     * @param {SegmentList} segmentList 
+     */
+    constructor(segmentList) { 
+        this.listings = []
+        this.segmentList = segmentList
+    }
+    
+    /**
+     * 
+     * @param {TransformerListing[]} listings 
+     */
+    add(listings) { 
+        if(Array.isArray(listings) == false) { 
+            listings = [listings]
+        }
+        for(const listing of listings) { 
+            if(!(listing instanceof TransformerListing)) { 
+                throw new Error("Transformer.add() can only accept type TransformerListing")
+            }
+            this.listings.push(listing)
+        }
+        return this 
+    }
+
+    transform(typeName) { 
+        //do the transformation 
+        let eSegments = expandSegments(this.segmentList.segments)
+        let transformedESegments = multiSegmentReplace(
+            eSegments, 
+            this.listings.map( tListing => { 
+
+                const replObj = {
+                    type: typeName
+                }
+
+                for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
+                    const tfFunc = satisfiedTfFunctionData.tfFunc 
+                    if(tfFunc.name != undefined) { 
+                        replObj[tfFunc.getName()] = satisfiedTfFunctionData.state
+                        
+                        console.log("PINEAPPLE", tfFunc )
+                    }
+                }
+
+                return [
+                    tListing.start, 
+                    tListing.end, 
+                    replObj
+                ]
+            }).filter(e => e != undefined)
+        )
+        console.log("TRANSORMED!!!", compactSegments(transformedESegments))
+    }
+}
 export class SegmentList { 
 
     segments = []
@@ -133,6 +199,7 @@ export class SegmentList {
         let tokenFunctionsIndex = 0 
         let tempState = []
         let tempStateCutLocations = []
+        let completedSets = []
 
         function getCurrentTokenFunction() { 
             return satisfiedTokenFunctions[tokenFunctionsIndex]
@@ -163,12 +230,16 @@ export class SegmentList {
         let rejected = false 
         for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
 
-            for(let endIndex = startIndex + 1; endIndex < eSegments.length; endIndex++) { 
+            for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
+
+                if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
+                    completedSets = [...completedSets, satisfiedTokenFunctions]
+                    startIndex = endIndex - 1
+                    tokenFunctionsIndex = 0 
+                    setTokenFunctionsDefault() 
+                }; 
                 const subExtendedSegments = eSegments.slice(startIndex, endIndex)
 
-                
-
-                if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) break; 
                 let currentTokenObject = satisfiedTokenFunctions[tokenFunctionsIndex]
                 let satisfyFunction = currentTokenObject.func
 
@@ -186,13 +257,29 @@ export class SegmentList {
                     tempState = []
                     tempStateCutLocations = [] 
 
+                    endIndex -= 1;
                     startIndex = endIndex
+
                     continue
                 }
 
                 if(tokenOperation == TokenOperations.SAVE) { 
                     tempState = [...subExtendedSegments]
                     tempStateCutLocations = [startIndex, endIndex]
+
+                    //if end of for loop, do the load operation 
+                    if(endIndex >= eSegments.length) { 
+                        saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
+                        satisfy() 
+                        nextTokenFunction() 
+                        reset()
+
+                        tempState = []
+                        tempStateCutLocations = [] 
+
+                        startIndex = endIndex
+                    }
+
                     continue 
                 }
 
@@ -228,8 +315,42 @@ export class SegmentList {
 
             }
         }
-        console.log(satisfiedTokenFunctions)
+        //the for loop ends before it runs this duplicated code 
+        if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
+            completedSets = [...completedSets, satisfiedTokenFunctions]
+            tokenFunctionsIndex = 0 
+            setTokenFunctionsDefault() 
+        }; 
+
+        //console.log(JSON.stringify(completedSets, null, " "))
+        //fs.writeFileSync("./test_output.json", , {encoding: "utf-8"})
+
+        //process the sets 
+        let transformer = new Transformer(this) 
+        for(let i = 0; i < completedSets.length; i++){ 
+            let minBoundary = undefined, maxBoundary = undefined; 
+
+            const set = completedSets[i] 
+            for(let k = 0; k < set.length; k++) { 
+                const sTokenFunction = set[k]
+                if(minBoundary == undefined || sTokenFunction.cutStart < minBoundary) { 
+                    minBoundary = sTokenFunction.cutStart
+                }
+                if(maxBoundary == undefined || sTokenFunction.cutEnd > maxBoundary) { 
+                    maxBoundary = sTokenFunction.cutEnd
+                }
+            }
+            console.log("::", minBoundary, maxBoundary)
+
+            transformer.add(new TransformerListing(
+                minBoundary, maxBoundary, set
+            ))
+        }
+
+        return transformer
     }
+
+    
     
 }
 
@@ -238,6 +359,7 @@ export class TokenFunction {
         this._func = undefined 
         this._name = undefined 
         this._propagate = false 
+        this.functionName = undefined
     }
 
     static from(func) { 
@@ -265,6 +387,10 @@ export class TokenFunction {
         return this 
     }
 
+    getName() { 
+        return this._name 
+    }
+
     propagate(tf=true) { 
         this._propagate = tf 
         return this 
@@ -275,6 +401,11 @@ export class TokenFunction {
             throw Error("Tried to fire non function type; Got " + this._func)
         }
         return this._func.bind(this)(...args)
+    }
+
+    setFunctionName(name=undefined) { 
+        this.functionName = name 
+        return this 
     }
 }
 
@@ -290,30 +421,51 @@ const StringMatch = (str) => {
     
         return TokenOperations.SAVE; 
         
-    })
+    }).setFunctionName(`StringMatch(${str})`)
 }
 
 const Alphabetical = () => { 
     return TokenFunction.from((state)=>{
         const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
-        for(const c of state) {
-            if(typeof(c) == 'object' || Array.isArray(c)) { 
-                return TokenOperations.LOAD; 
-            }
-            if(!allowed.includes(c)) { 
-                return TokenOperations.LOAD; 
-            }
+        const last = state[state.length-1] 
+        const rejectOperation = state.length > 1 ? TokenOperations.LOAD : TokenOperations.REJECT
+
+        if(typeof(last) == 'object' || Array.isArray(last)) { 
+            return rejectOperation; 
         }
+        if(!allowed.includes(last)) { 
+            return rejectOperation; 
+        }
+        
         return TokenOperations.SAVE;
-    })
+    }).setFunctionName("Alphabetical")
+}
+
+const Numerical = () => { 
+    return TokenFunction.from((state)=>{
+        const allowed = "1234567890".split("")
+        const last = state[state.length-1] 
+        const rejectOperation = state.length > 1 ? TokenOperations.LOAD : TokenOperations.REJECT
+
+        if(typeof(last) == 'object' || Array.isArray(last)) { 
+            return rejectOperation; 
+        }
+        if(!allowed.includes(last)) { 
+            return rejectOperation; 
+        }
+        
+        return TokenOperations.SAVE;
+    }).setFunctionName("Alphabetical")
 }
 
 
 
+
 const sList = new SegmentList(); 
-sList.append(["My name name fis ", {name: "Liam"}, "Liam"])
+sList.append(["Liam76 Liam45 Liam47"])
 
 sList.find([
-    //StringMatch("name ").name("text").propagate()
-    Alphabetical().name("words").propagate() 
-]) 
+    StringMatch("Liam").name("name").propagate(),
+    Numerical().name("NUMBER").propagate()
+]).transform("WEAPON")
+
