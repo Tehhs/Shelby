@@ -29,6 +29,13 @@ end
 
 ```
 
+# Progress
+
+* > Build and perfect the custom parser
+* - Use parser to compile Shelby code into json
+* - Use json ot build into NASM
+* - NASM to executable
+
 # Instructions 
 
 Code cannot be deployed at the moment. Most of the current work is being put into making the parser as easy and bug-free as possible.
