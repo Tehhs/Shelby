@@ -39,7 +39,7 @@ As mentioned, this project makes use of a custom parser. Code for this parser ca
 
 ```js
 Segments.find([
-    OR(StringMatch("public"), StringMatch("protected")),
+    OR(StringMatch("public"), StringMatch("protected")).name("AccessType").propagate(),
     Opt(StringMatch("static")).name("static").propagte(),
     StringMatch("void"), 
     FunctionName().name("FunctionName").propagate()
@@ -53,19 +53,8 @@ Should be transformed into the below json (or something like this)
 ```json
 {
     "type": "method", 
-    "inner": [
-        {
-            "name": "static",
-            "value": "static"
-        },
-        {
-            "name": "FunctionName",
-            "value": "main"
-        },
-        {
-            "name": "method_block", 
-            "value": ...
-        }
-    ]
+    "static": true,
+    "FunctionName": "main", 
+    "AccessType": "public"
 }
 ```
