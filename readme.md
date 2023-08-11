@@ -31,7 +31,7 @@ end
 
 # Instructions 
 
-Put your code in input.shelby, and run with `node .`. Right now, all it does it transpile some basic variable declarations and conditional statements, transpiles to javascript and runs the code. 
+Code cannot be deployed at the moment. Most of the current work is being put into making the parser as easy and bug-free as possible.
 
 # Custom Parser 
 
