@@ -1,394 +1,411 @@
-import process from "process"
+import { compactSegments, expandSegments, multiSegmentReplace, split } from "./internal.js"
+import fs from 'fs'
 
-export function segmentReplace(segArray, selectionVec, replacement) { 
-    let newSegArray = []
-    for(const seg of segArray) { 
-        let newSeg = []
-        if(typeof(seg) == "string") { 
-            if(seg.length > 1) { 
-                newSeg = seg.split("")
-            } else { 
-                newSeg = [seg]
-            }
-        }
-        if(typeof(seg) == "object") { 
-            newSeg = [seg] 
-        }
-        newSegArray = [...newSegArray, ...newSeg]
-    }
-
-
-    if(selectionVec.length != 2) {
-        throw new Error("Selection vector is not equal to 2; Doesnt make sense")
-    }
-
-    if(!Array.isArray(replacement)) { 
-        replacement = [replacement]
-    }
-    let retSegArray = [
-        ...newSegArray.slice(0, selectionVec[0]),
-        ...replacement, 
-        ...newSegArray.slice(selectionVec[1], newSegArray.length)
-    ]
-
-    //compress all the chars into strings 
-    const compress = true 
-    if(compress == true) { 
-        const compressedSegArray = []
-        const objectIndexes = []
-        retSegArray.forEach( (ele, i) => {
-            if(typeof(ele) == "object") { 
-                objectIndexes.push(i)
-            }
-        })
-
-        let last = 0 
-        for(let i = 0; i < objectIndexes.length; i++) { 
-            let _index = objectIndexes[i]
-            let obj = retSegArray[_index]
-            const compressedString = retSegArray.slice(last, _index).join("")
-            if(compressedString.length > 0) compressedSegArray.push(compressedString)
-            compressedSegArray.push(obj)
-
-            last = _index + 1 
-        }
-
-
-        //apparently this fixes stuff even after verifying this doesnt do anything via testing? even tho it makes sense to put this condition here 
-        if(last < retSegArray.length) { 
-            let lastCompressedString = retSegArray.slice(last, retSegArray.length).join("")
-            compressedSegArray.push(lastCompressedString)
-        }
-
-        
-
-        retSegArray = compressedSegArray
-    }
-
-   // console.log("IN FUNC", retSegArray, segArray, selectionVec, replacement)
-    
-
-
-
-    return retSegArray
-
-
-}
-// const segs = segmentReplace(
-//     [
-//         'print',
-//         {
-//           type: 'call',
-//           value: { type: 'string', contents: '"End of program"' }
-//         }
-//     ],
-//     [0,6], 
-//     "this should work"
-// )
-// console.log("segs=", segs)
-// process.exit()
-
-
-/**
- * 
- * split("I have many bees in my boots", 12, 16, (str)=>{
- *   return {
- *       type: "animal", 
- *       inner: str 
- *   }
- * })
- * 
- * @param {*} str 
- * @param {*} pointA 
- * @param {*} pointB 
- * @param {*} func 
- * @returns 
- * 
- * The point coords in the arrays cannot overlap.
- */
-export function split(str, pointArrays, func) { 
-    if(pointArrays.length <= 0) return str
-    //filter the points 
-    let newPointArrays = []
-    for(let pArr of pointArrays) { 
-        if(pArr.length == 2) { 
-            pArr = pArr.sort( (a,b) => a-b)
-            newPointArrays.push(pArr)
-        }
-    }
-
-    //ignore point group intersections, if they happen thats user error 
-    //and calculating that would be a little computationally expensive 
-
-    //run the strings through provided function 
-    const funcReturnsData = []
-    for(const pArr of pointArrays) { 
-        const pArrStr = str.substring(pArr[0], pArr[1]);
-        const funcReturn = func(pArrStr, pArr)
-        funcReturnsData.push({
-            position: pArr[0], 
-            funcReturn,
-            type: 0 //data
-        })
-    }
-
-    //merge the funcReturns with the other parts of  the string 
-
-    //invert the pointarrays 
-    let inverted = pointArrays.reduce( (a, c) => {
-        return [...a, ...c]
-    })
-    if(inverted[0] == 0) { 
-        inverted.splice(0,1)
-    } else { 
-        inverted = [0, ...inverted]
-    }
-    if(inverted[inverted.length-1] != str.length) { 
-        inverted.push(str.length)
-    }
-    if(inverted.length % 2 != 0) { 
-        inverted.pop() 
-    }
-    let newInverted = []
-    for(let i = 0; i < inverted.length; i += 2) { 
-        newInverted.push([inverted[i], inverted[i+1]])
-    }
-    inverted = newInverted 
-    //resolve the inverted point arrays to strings 
-    const invertedData = []
-    for(const invertedPoints of inverted) { 
-        invertedData.push({
-            position: invertedPoints[0], 
-            str: str.substring(invertedPoints[0], invertedPoints[1]),
-            type: 1 // string 
-        })
-    }
-
-    let combinedSegmentes = [...invertedData, ...funcReturnsData]
-    combinedSegmentes.sort( (a,b) => a.position - b.position)
-    combinedSegmentes = combinedSegmentes.map( ele => { 
-        let ret = undefined 
-        if(ele.type == 1) ret = ele.str
-        if(ele.type == 0) ret = ele.funcReturn
-
-        return ret 
-    })
-
-    
-    return combinedSegmentes
+export const TokenOperations = {
+    IGNORE: "IGNORE", //ignore tokenFunction, go to next TokenFunction
+    SAVE: "SAVE", 
+    LOAD: "LOAD",
+    ACCEPT: "ACCEPT",
+    REJECT: "REJECT" 
 }
 
-
-// console.log(split(
-//     "Liam-and-I-like-cheese-my-dude!!",
-//     [[0,4],[16,22]], 
-//     function(substr) { 
-//         return {STRING:substr}
-//     }
-// ))
-
-
-export function captureStrings(segments) { 
-    const newSegments = []
-    for(const segment of segments) { 
-        const groups = []
-        if(typeof(segment) != "string") { 
-            newSegments.push(segment)
-            continue 
+export class TransformerListing { 
+    constructor(start, end, tokenFunctionArray) { 
+        this.start = start
+        this.end = end
+        this.satisfiedTokenFunctions = tokenFunctionArray 
+    }
+}
+export class Transformer { 
+    
+    /**
+     * 
+     * @param {SegmentList} segmentList 
+     */
+    constructor(segmentList) { 
+        this.listings = []
+        this.segmentList = segmentList
+    }
+    
+    /**
+     * 
+     * @param {TransformerListing[]} listings 
+     */
+    add(listings) { 
+        if(Array.isArray(listings) == false) { 
+            listings = [listings]
         }
-        let str = segment
-        let first = undefined 
-        let second = undefined
-        let previousChar = undefined
-        for(let i = 0 ; i < str.length; i++) { 
-            const char = str.charAt(i);
-
-            if(!(previousChar != "\\" && char == "\"")) { 
-                previousChar = char; 
-                continue; 
+        for(const listing of listings) { 
+            if(!(listing instanceof TransformerListing)) { 
+                throw new Error("Transformer.add() can only accept type TransformerListing")
             }
-
-            if(first == undefined) { 
-                first = i 
-            } else if(second == undefined) { 
-                second = i + 1
-                groups.push([first,second])
-                first = undefined 
-                second = undefined 
-                previousChar = undefined 
-            } else { 
-                previousChar = char; 
-            }
+            this.listings.push(listing)
         }
-        //console.log("groups", groups)
+        return this 
+    }
 
-        const render = split(
-            segment,
-            groups, 
-            function(substr) { 
-                return {
-                    type: "string", 
-                    contents: substr
+    transform(typeName) { 
+        //do the transformation 
+        let eSegments = expandSegments(this.segmentList.segments)
+        let transformedESegments = multiSegmentReplace(
+            eSegments, 
+            this.listings.map( tListing => { 
+
+                const replObj = {
+                    type: typeName
                 }
-            }
+
+                for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
+                    const tfFunc = satisfiedTfFunctionData.tfFunc 
+                    if(tfFunc.name != undefined) { 
+                        replObj[tfFunc.getName()] = satisfiedTfFunctionData.state
+                        
+                        console.log("PINEAPPLE", tfFunc )
+                    }
+                }
+
+                return [
+                    tListing.start, 
+                    tListing.end, 
+                    replObj
+                ]
+            }).filter(e => e != undefined)
         )
-        for(const r of render) { 
-            newSegments.push(r) 
-        }
 
+        return compactSegments(transformedESegments) 
     }
-    return newSegments
-
 }
+export class SegmentList { 
 
-export function findAndSegment(segments, tokenTypes, func) { 
+    segments = []
+    constructor(list) { 
+        this.append(list) 
+    }
 
-
-    while(true) { 
-        const defaultState = { 
-            satisfied: false,
-            satisfiedState: undefined, 
-            wasSatisfied: false, 
-            lastSatisfiedSelectionStart: undefined, 
-            lastSatisfiedSelectionEnd: undefined 
+    append(list) { 
+        if(list instanceof SegmentList) { 
+            this.segments = [...this.segments, ...list.segments]
         }
-        const satisfiedTokenTypes = tokenTypes.map(tt => {
-            return { 
-                tokenType: tt, 
-                ...defaultState
-            }   
-        })
-
-        let stringExpandedSegents = []
-        for(const segment of segments) { 
-            if(typeof(segment) == "string") { 
-                stringExpandedSegents = [...stringExpandedSegents, ...segment.split("")]
-            }
-            if(typeof(segment) == "object") { 
-                stringExpandedSegents.push(segment)
-            }
+        if(!Array.isArray(list)) { 
+            this.segments = [list]
         }
+        this.segments = list
+    }
 
+    clear() { 
+        this.segments = []
+    }
 
-        let selectedTokenTypeIndex = 0 
-        let initialStartIndex = 0
-        let startStringIndex = initialStartIndex 
-        let total = []
-        
-
+    copy(segmentList) { 
+        this.clear() 
+        this.append(segmentList)
+    }
     
-        for(let endStringIndex = startStringIndex + 1; endStringIndex <= stringExpandedSegents.length; endStringIndex++) { 
-            // console.log("LOOP START", satisfiedTokenTypes)
-            const selectedTokenType = satisfiedTokenTypes[selectedTokenTypeIndex]
-            if(selectedTokenTypeIndex >= satisfiedTokenTypes.length) /*All token types satisfied?*/ break; 
-            // console.log("THE INDEX", selectedTokenTypeIndex)
-            total = stringExpandedSegents.slice(startStringIndex, endStringIndex)
-            
-            // console.log("NEW TOTAL", total)
-            // console.log(">>", total.join(" "))
-            let validator = selectedTokenType.tokenType 
-            let infoObject = undefined 
-            let truthFunction = undefined 
-            if(typeof(validator) == "object") { 
-                infoObject = validator
-                validator = infoObject.validator
-                truthFunction = infoObject.truthFunction
+    replace(start, end, _replacement) { 
+        if(!Array.isArray(_replacement)) { 
+            _replacement = [_replacement]
+        }
+        this.segments = [
+            ...this.segments.slice(0, start),
+            ..._replacement,
+            ...this.segments.slice(end, this.segments.length)
+        ]
+        return this.segments 
+    }
+
+    processStrings() { 
+        const newSegments = []
+        let segments = [...this.segments]
+        for(const segment of segments) { 
+            const groups = []
+            if(typeof(segment) != "string") { 
+                newSegments.push(segment)
+                continue 
             }
-            const result = validator(total, total[total.length-1])
-
-            selectedTokenType.satisfied = result 
-
-            const reset = () => { 
-                // console.log("resetting")
-                // startStringIndex = endStringIndex - 1//CHANGE -1
-                startStringIndex = initialStartIndex+1
-                initialStartIndex++ 
-                endStringIndex = startStringIndex
-                
-                selectedTokenTypeIndex = 0 
-                for(const t of satisfiedTokenTypes) { 
-                    t.satisfied = false 
-                    t.wasSatisfied = false 
-                    t.satisfiedState = undefined //#todo append default state object to avoid duplicate logic 
-                    t.lastSatisfiedSelectionStart = defaultState.lastSatisfiedSelectionStart 
-                    t.lastSatisfiedSelectionEnd = defaultState.lastSatisfiedSelectionStart 
+            let str = segment
+            let first = undefined 
+            let second = undefined
+            let previousChar = undefined
+            for(let i = 0 ; i < str.length; i++) { 
+                const char = str.charAt(i);
+    
+                if(!(previousChar != "\\" && char == "\"")) { 
+                    previousChar = char; 
+                    continue; 
+                }
+    
+                if(first == undefined) { 
+                    first = i 
+                } else if(second == undefined) { 
+                    second = i + 1
+                    groups.push([first,second])
+                    first = undefined 
+                    second = undefined 
+                    previousChar = undefined 
+                } else { 
+                    previousChar = char; 
                 }
             }
-            
-
-            if(result == true) {
-                // console.log("SATISFIED", selectedTokenType.tokenType, total, total[total.length-1], startStringIndex, endStringIndex)
-                selectedTokenType.wasSatisfied = true 
-
-                selectedTokenType.lastSatisfiedSelectionStart = startStringIndex
-                selectedTokenType.lastSatisfiedSelectionEnd = endStringIndex
-                
-            } else { 
-                // console.log("NOT SATISFIED", selectedTokenType.tokenType, total, total[total.length-1], startStringIndex, endStringIndex)
+            //console.log("groups", groups)
+    
+            const render = split(
+                segment,
+                groups, 
+                function(substr) { 
+                    return {
+                        type: "string", 
+                        contents: substr
+                    }
+                }
+            )
+            for(const r of render) { 
+                newSegments.push(r) 
             }
+    
+        }
+        this.segments = newSegments
+    
+    }
 
-            //matched? move to next token match
-            let isLast = selectedTokenType.wasSatisfied == true && (endStringIndex) >= stringExpandedSegents.length
-            if((selectedTokenType.wasSatisfied == true && selectedTokenType.satisfied == false)
-                || (isLast) /*End of for*/) { 
-                    
-                let cut = total.slice(0, isLast ? total.length : total.length-1)
-                if(truthFunction != undefined && truthFunction(cut) == false) { 
-                    reset() 
+
+    find(TokenFunctions) { 
+        //check to make sure all "TokenFunctions" are indeed instanceof TokenFunction 
+        for(const tf of TokenFunctions) { 
+            if( !(tf instanceof TokenFunction) ) { 
+                throw new Error(`${tf} is not a TokenFunction`)
+            }
+        }
+
+        const eSegments = expandSegments(this.segments)
+
+        let satisfiedTokenFunctions = []
+        function setTokenFunctionsDefault() { 
+            satisfiedTokenFunctions = TokenFunctions.map(tf => { 
+                return { 
+                    satisfied: false,
+                    func: tf.getFunc(), 
+                    tfFunc: tf,
+                    state: undefined, 
+                    cutStart: undefined, 
+                    cutEnd: undefined 
+                }
+            })
+        }
+        setTokenFunctionsDefault() 
+
+        let startIndex = 0
+        let tokenFunctionsIndex = 0 
+        let tempState = []
+        let tempStateCutLocations = []
+        let completedSets = []
+
+        function getCurrentTokenFunction() { 
+            return satisfiedTokenFunctions[tokenFunctionsIndex]
+        }
+        function saveState(state , cutStart, cutEnd) { 
+            getCurrentTokenFunction().state = [...state]
+            getCurrentTokenFunction().cutStart = cutStart 
+            getCurrentTokenFunction().cutEnd = cutEnd 
+        }
+        function satisfy(satisfied=true) { 
+            getCurrentTokenFunction().satisfied = satisfied
+        }
+        function nextTokenFunction() { 
+            if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) { 
+                return false 
+            }; 
+            tokenFunctionsIndex++ 
+            return true
+        }
+        function reset(resetTokenFunctionIndex=false) { 
+            tempState = []
+            tempStateCutLocations = []
+            if(resetTokenFunctionIndex) { 
+                tokenFunctionsIndex = 0 
+            }
+        }
+        
+        let rejected = false 
+        for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
+
+            for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
+                if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
+                    completedSets = [...completedSets, satisfiedTokenFunctions]
+                    startIndex = endIndex - 1
+                    tokenFunctionsIndex = 0 
+                    setTokenFunctionsDefault() 
+                }; 
+                const subExtendedSegments = eSegments.slice(startIndex, endIndex)
+
+                let currentTokenObject = satisfiedTokenFunctions[tokenFunctionsIndex]
+                let satisfyFunction = currentTokenObject.func
+
+                let tokenOperation = satisfyFunction(subExtendedSegments)
+                if(tokenOperation == undefined) { 
+                    throw new Error("Got Undefined TokenOperation")
+                }
+
+                if(tokenOperation == TokenOperations.LOAD) { 
+                    saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
+                    satisfy() 
+                    nextTokenFunction() 
+                    reset()
+
+                    tempState = []
+                    tempStateCutLocations = [] 
+
+                    endIndex -= 1;
+                    startIndex = endIndex
+
+                    continue
+                }
+
+                if(tokenOperation == TokenOperations.SAVE) { 
+                    tempState = [...subExtendedSegments]
+                    tempStateCutLocations = [startIndex, endIndex]
+
+                    //if end of for loop, do the load operation 
+                    if(endIndex >= eSegments.length) { 
+                        saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
+                        satisfy() 
+                        nextTokenFunction() 
+                        reset()
+
+                        tempState = []
+                        tempStateCutLocations = [] 
+
+                        startIndex = endIndex
+                    }
+
                     continue 
                 }
-                // console.log("MATCH", selectedTokenType.wasSatisfied == true && selectedTokenType.satisfied == false, selectedTokenType.wasSatisfied == true && (endStringIndex) >= stringExpandedSegents.length)
-                selectedTokenType.satisfiedState = cut
-                // console.log
-                endStringIndex -= 1; 
-                selectedTokenTypeIndex++; 
-                startStringIndex = endStringIndex;
-                continue; 
-            }
 
-            //current token not matching with tokenmatch, reset tokenmatch progress and start again from next token 
-            if(selectedTokenType.wasSatisfied == false && selectedTokenType.satisfied == false) { 
-                reset() 
-                continue; 
-            }
-            // console.log("NEXT LOOP")
-            //can get to this point is all satisfied, then endindex++
-           // console.log("??", total, selectedTokenType.wasSatisfied, selectedTokenType.satisfied)//should not get to this point really, unaccounted for case in the loop 
-        
-        } 
-        // console.log("YA MAN", satisfiedTokenTypes)  
-        const satisfied = satisfiedTokenTypes.every(ele => ele.wasSatisfied)
+                //ignore this token and reset, for optional,
+                //skip the optional token 
+                if(tokenOperation == TokenOperations.IGNORE) { 
+                    satisfy() 
+                    nextTokenFunction() 
+                    reset() 
 
-        if(satisfied == true) { 
-            // console.log("R FUNCTION SUPPLIED WITH", satisfiedTokenTypes)
-            const replacementSegment = func(satisfiedTokenTypes)
-            // console.log("REPLACEMENT SEGMENT =", replacementSegment)
-            const replacementStartIndex = satisfiedTokenTypes.map(v => v.lastSatisfiedSelectionStart).sort( (a,b) => a-b)[0]
-            const replacementEndIndex = satisfiedTokenTypes.map(v => v.lastSatisfiedSelectionEnd).sort( (a,b) => b-a)[0]
-            // console.log("$$", replacementStartIndex, replacementEndIndex)
-        
-            // console.log("SEG REPLACE BEFORE ", segments, replacementStartIndex,replacementEndIndex)
-            const segs = segmentReplace(
-                segments,
-                [replacementStartIndex,replacementEndIndex], 
-                replacementSegment
-            )
-            segments = segs //restart the process on the new segment array
-            // console.log("SEG REPLACE RETURNED ", segs)
-            continue 
-        } else { 
-            break //out of while loop if nothing was satisfied 
+                    endIndex = startIndex
+                    tokenFunctionsIndex++ 
+                    continue 
+                }
+
+                //ACCEPT AND PROCESS THE CURRENT TOKEN 
+                if(tokenOperation == TokenOperations.ACCEPT) { 
+                    saveState([...subExtendedSegments], startIndex, endIndex)
+                    satisfy() 
+                    nextTokenFunction() 
+                    reset() 
+
+                    startIndex = endIndex
+                    continue 
+                }
+
+                //ACCEPT AND PROCESS THE CURRENT TOKEN 
+                if(tokenOperation == TokenOperations.REJECT) { 
+                    reset(true) 
+                    setTokenFunctionsDefault() 
+                    break
+                }
+
+            }
         }
+        //the for loop ends before it runs this duplicated code 
+        if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
+            completedSets = [...completedSets, satisfiedTokenFunctions]
+            tokenFunctionsIndex = 0 
+            setTokenFunctionsDefault() 
+        }; 
+
+        //console.log(JSON.stringify(completedSets, null, " "))
+        //fs.writeFileSync("./test_output.json", , {encoding: "utf-8"})
+
+        //process the sets 
+        let transformer = new Transformer(this) 
+        for(let i = 0; i < completedSets.length; i++){ 
+            let minBoundary = undefined, maxBoundary = undefined; 
+
+            const set = completedSets[i] 
+            for(let k = 0; k < set.length; k++) { 
+                const sTokenFunction = set[k]
+                if(minBoundary == undefined || sTokenFunction.cutStart < minBoundary) { 
+                    minBoundary = sTokenFunction.cutStart
+                }
+                if(maxBoundary == undefined || sTokenFunction.cutEnd > maxBoundary) { 
+                    maxBoundary = sTokenFunction.cutEnd
+                }
+            }
+            console.log("::", minBoundary, maxBoundary)
+
+            transformer.add(new TransformerListing(
+                minBoundary, maxBoundary, set
+            ))
+        }
+
+        return transformer
     }
-    return segments 
-    
-    // console.log("segs=", segs)
 
     
-    //#TODO #NEXT WE NEED TO REWRITE SPLIT TO TAKE IN AN ARRAY OF CHARACTERS AND OBJECTS, INSTEAD OF JUST A STRING LIKE IT DOES NOT.
-
-    // console.log(stringExpandedSegents)
-    // console.log("??", satisfiedTokenTypes[1].tokenType("James".split("").push({}), {}))
-    //console.log("replacement should be", replacement)
+    
 }
+
+export class TokenFunction { 
+    constructor() { 
+        this._func = undefined 
+        this._name = undefined 
+        this._propagate = false 
+        this.functionName = undefined
+    }
+
+    static from(func) { 
+        const newTokenFunction = new TokenFunction() 
+        newTokenFunction._func = func
+        return newTokenFunction
+    }
+
+    call(...args) { 
+        return this._func.bind(this)(...args)
+    }
+
+    setFunc(func) { 
+        if(typeof(func) != 'function') { 
+            throw new Error("Type is not function")
+        }
+        this._func = func 
+    }
+    getFunc() { 
+        return this._func; 
+    }
+
+    name(name) { 
+        this._name = name 
+        return this 
+    }
+
+    getName() { 
+        return this._name 
+    }
+
+    propagate(tf=true) { 
+        this._propagate = tf 
+        return this 
+    }
+
+    call(...args) { 
+        if(typeof(this._func) != 'function') { 
+            throw Error("Tried to fire non function type; Got " + this._func)
+        }
+        return this._func.bind(this)(...args)
+    }
+
+    setFunctionName(name=undefined) { 
+        this.functionName = name 
+        return this 
+    }
+}
+
+
+
 
