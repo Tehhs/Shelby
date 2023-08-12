@@ -83,24 +83,52 @@ const Space = () => {
 
 
 const sList = new SegmentList(); 
-sList.append(["-- public     static void pizza --"])
+sList.append([`
+    let a = 5 
+    let b = "yes"
+    print(a)
+    print(b) 
+`])
+sList.processStrings()
 
-const ACCESS_TYPE = Or( StringMatch("protected"), StringMatch("public")).name("access_type").propagate()
-const RETURN_TYPE = Or( StringMatch("void"), StringMatch("int"), StringMatch("String")).name("return_type")
-const STATIC_KEYWORD = StringMatch("static").name("is_static").propagate()
-const METHOD_NAME = Alphabetical().name("method_name").propagate()
+
+const MultiStringMatch = (...strs) => { 
+    const stringMatchFunctions = []
+    for(const str of strs) { 
+        stringMatchFunctions.push( 
+            StringMatch(str)
+        )
+    }
+    return Or(...stringMatchFunctions)
+}
+
+const VARIABLE_DECL_TYPE = MultiStringMatch("let", "number").name("var_decl_type").propagate()
+const VARIABLE_NAME = Alphabetical().name("variable_name").propagate()
+const EQUALS = StringMatch("=")
+
 const SPACE = Space() 
 
+const TypeMatch = (type) => { 
+    return TokenFunction.from((state) => {
+        const last = state[state.length-1]
+        if(typeof(last) != "object") return TokenOperations.REJECT
+        if(last.type != type) return TokenOperations.REJECT
+        return TokenOperations.ACCEPT
+    }) 
+}
+
 const newSegList = sList.find([
-    ACCESS_TYPE,
+    VARIABLE_DECL_TYPE,
     SPACE, 
-    STATIC_KEYWORD,
+    VARIABLE_NAME,
     SPACE,
-    RETURN_TYPE,
-    SPACE, 
-    METHOD_NAME,
+    EQUALS,
 ]).transform("method_decl")
+.find([
+    TypeMatch("method_decl"),
+    SPACE,
+    Numerical()
+]).transform("method_decl_1")
 
 
-
-console.log("!!", newSegList)
+console.log("CHEESE? " ,newSegList)

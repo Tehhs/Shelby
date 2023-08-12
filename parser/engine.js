@@ -72,7 +72,7 @@ export class Transformer {
             }).filter(e => e != undefined)
         )
 
-        return compactSegments(transformedESegments) 
+        return new SegmentList( compactSegments(transformedESegments) )
     }
 }
 export class SegmentList { 

@@ -1,3 +1,30 @@
 parse_result.json
 node_modules
 node_modules/*
+
+
+## Visual Studio 
+
+language/lib/project/.vs
+language/lib/project/Debug
+language/lib/project/Release
+
+language/lib/project/ShelbyLibrary/Release
+language/lib/project/ShelbyLibrary/Debug
+
+language/lib/project/ConsoleApplication/Release
+language/lib/project/ConsoleApplication/Debug
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Mono auto generated files
+mono_crash.*
+
