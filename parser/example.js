@@ -1,5 +1,5 @@
-import { SegmentList, TokenFunction, TokenOperations } from "./parser/Engine.js";
-import { StringMatch, Numerical, Alphabetical, MultiStringMatch, TypeMatch, Or, Space } from "./parser/ParserFunctions.js"
+import { SegmentList, TokenFunction, TokenOperations } from "./Engine.js";
+import { StringMatch, Numerical, Alphabetical, MultiStringMatch, TypeMatch, Or, Space } from "./ParserFunctions.js"
 
 const VARIABLE_DECL_TYPE = _ => MultiStringMatch("let", "number").name("var_decl_type")
 const VARIABLE_NAME = _ => Alphabetical().name("variable_name")
@@ -18,6 +18,7 @@ const segmentList = sList.find([
     VARIABLE_DECL_TYPE(),
     SPACE(), 
     VARIABLE_NAME(),
+    //Opt(SPACE).name("Hello?"),
     SPACE().opt(),
     EQUALS(),
 ]).transform("method_decl")

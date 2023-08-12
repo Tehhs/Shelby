@@ -2,11 +2,12 @@ import { compactSegments, expandSegments, multiSegmentReplace, split } from "./i
 import fs from 'fs'
 
 export const TokenOperations = {
-    IGNORE: "IGNORE", //ignore tokenFunction, go to next TokenFunction
+    // IGNORE: "IGNORE", //Replaced by setting the token function to optional
     SAVE: "SAVE", 
     LOAD: "LOAD",
     ACCEPT: "ACCEPT",
-    REJECT: "REJECT" 
+    REJECT: "REJECT",
+    NEXT: "NEXT" //kinda like save, but SAVE ends up loading on end of input, NEXT should not have that issue and should be used with ACCEPT OR REJECT, NO LOAD 
 }
 
 export class TransformerListing { 
@@ -57,7 +58,7 @@ export class Transformer {
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     const tfFunc = satisfiedTfFunctionData.tfFunc 
-                    if(tfFunc.name != undefined) { 
+                    if(tfFunc.getName() != undefined) { 
                         replObj[tfFunc.getName()] = satisfiedTfFunctionData.state
                         
                         console.log("PINEAPPLE", tfFunc )
@@ -90,6 +91,7 @@ export class SegmentList {
             this.segments = [list]
         }
         this.segments = list
+        return this 
     }
 
     clear() { 
@@ -164,7 +166,7 @@ export class SegmentList {
     
         }
         this.segments = newSegments
-    
+        return this 
     }
 
 
@@ -229,6 +231,8 @@ export class SegmentList {
         for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
 
             for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
+                
+                const endOfLoop = endIndex >= eSegments.length
                 if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
                     completedSets = [...completedSets, satisfiedTokenFunctions]
                     startIndex = endIndex - 1
@@ -241,6 +245,7 @@ export class SegmentList {
                 let satisfyFunction = currentTokenObject.func
 
                 let tokenOperation = satisfyFunction(subExtendedSegments)
+                // debugger
                 if(tokenOperation == undefined) { 
                     throw new Error("Got Undefined TokenOperation")
                 }
@@ -265,7 +270,7 @@ export class SegmentList {
                     tempStateCutLocations = [startIndex, endIndex]
 
                     //if end of for loop, do the load operation 
-                    if(endIndex >= eSegments.length) { 
+                    if(endOfLoop == true) { 
                         saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
                         satisfy() 
                         nextTokenFunction() 
@@ -280,16 +285,21 @@ export class SegmentList {
                     continue 
                 }
 
+                if(tokenOperation == TokenOperations.NEXT) { 
+                    if(endOfLoop == true && currentTokenObject.tfFunc.isOptional() == true) { 
+                        //move back and use input for next token, only if current is optional
+                        satisfy() 
+                        nextTokenFunction() 
+                        endIndex = startIndex
+                    } 
+                    continue 
+                    
+                }
+
                 //ignore this token and reset, for optional,
                 //skip the optional token 
                 if(tokenOperation == TokenOperations.IGNORE) { 
-                    satisfy() 
-                    nextTokenFunction() 
-                    reset() 
-
-                    endIndex = startIndex
-                    tokenFunctionsIndex++ 
-                    continue 
+                    throw new Error("IGNORE TokenOperation no longer supported. Replaced by TokenFunction.optional(true)")
                 }
 
                 //ACCEPT AND PROCESS THE CURRENT TOKEN 
@@ -303,17 +313,39 @@ export class SegmentList {
                     continue 
                 }
 
-                //ACCEPT AND PROCESS THE CURRENT TOKEN 
+                //REJECT
                 if(tokenOperation == TokenOperations.REJECT) { 
-                    reset(true) 
-                    setTokenFunctionsDefault() 
-                    break
+
+                    if(currentTokenObject.tfFunc.isOptional() == true) { 
+                        //pretty much like an accept 
+                        reset(false) 
+                        satisfy() 
+                        nextTokenFunction() 
+                        endIndex--
+                    } else { 
+                        setTokenFunctionsDefault() 
+                        reset(true) 
+                        break
+                    }
+                    
                 }
 
             }
         }
+        
+        //if the last tokenfunctions are optional (can return "IGNORE") at the end of input we need to 
+        //run the below code block
+        let lastTokensAreOptional = true
+        for(let i = tokenFunctionsIndex; i < satisfiedTokenFunctions.length; i++) { 
+            const satisfiedTfFuncData = satisfiedTokenFunctions[i]
+            const optional = satisfiedTfFuncData.tfFunc.isOptional() 
+            if(optional == false) { 
+                lastTokensAreOptional = false; 
+                break; 
+            }
+        }
         //the for loop ends before it runs this duplicated code 
-        if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
+        if(tokenFunctionsIndex >= satisfiedTokenFunctions.length || lastTokensAreOptional) {
             completedSets = [...completedSets, satisfiedTokenFunctions]
             tokenFunctionsIndex = 0 
             setTokenFunctionsDefault() 
@@ -357,6 +389,7 @@ export class TokenFunction {
         this._name = undefined 
         this._propagate = false 
         this.functionName = undefined
+        this._optional = false 
     }
 
     static from(func) { 
@@ -367,6 +400,18 @@ export class TokenFunction {
 
     call(...args) { 
         return this._func.bind(this)(...args)
+    }
+
+    optional(optional=true) { 
+        this._optional = optional
+        return this 
+    }
+    opt(optional=true) { 
+        return this.optional(optional)
+    }
+
+    isOptional() { 
+        return this._optional
     }
 
     setFunc(func) { 
