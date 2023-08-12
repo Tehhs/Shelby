@@ -42,17 +42,45 @@ Code cannot be deployed at the moment. Most of the current work is being put int
 
 # Custom Parser 
 
-As mentioned, this project makes use of a custom parser. Code for this parser can be found in /parser/engine. The parser is being rebuilt as it the old one was difficult to use. Using the parser in the future should look something like this while parsing a simple Java method declaration. 
+As mentioned, this project makes use of a custom parser. Code for this parser can be found in /parser/engine. Below is real working code for parsing some basic syntax. 
 
 ```js
-Segments.find([
-    OR(StringMatch("public"), StringMatch("protected")).name("AccessType").propagate(),
-    Opt(StringMatch("static")).name("static").propagte(),
-    StringMatch("void"), 
-    FunctionName().name("FunctionName").propagate()
-    MethodBlock().name("method_block").propagate(),
-    Opt(StringMatch(",")).reset() 
-).transform("method") 
+const VARIABLE_DECL_TYPE = _ => MultiStringMatch("let", "number").name("var_decl_type")
+const VARIABLE_NAME = _ => Alphabetical().name("variable_name")
+const EQUALS = _ => StringMatch("=")
+const SPACE = _ => Space() 
+
+const sList = new SegmentList(); 
+sList.append([`
+    let a = 5 
+    let b= "yes"
+    print(a)
+    print(b) 
+`]).processStrings()
+
+const segmentList = sList.find([
+    VARIABLE_DECL_TYPE(),
+    SPACE(), 
+    VARIABLE_NAME(),
+    SPACE().opt(),
+    EQUALS(),
+]).transform("method_decl")
+.find([
+    TypeMatch("method_decl"),
+    SPACE().opt(),
+    Or(TypeMatch("string"), Numerical()).name("value")
+]).transform("method_decl_1")
+.find([
+    StringMatch("print"),
+    SPACE().opt(),
+    StringMatch("("),
+    SPACE().opt(),
+    Alphabetical().name("variable"),
+    SPACE().opt(),
+    StringMatch(")")
+]).transform("print_function")
+
+console.log("Results:  ", JSON.stringify(segmentList, null, " "))
 ```
 
 Should be transformed into the below json (or something like this)
