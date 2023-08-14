@@ -428,6 +428,7 @@ export class TokenFunction {
         this._optional = false 
         this._collapse = false 
         this._join = false 
+        this._shift = 0 
     }
 
     static from(func) { 
@@ -447,6 +448,10 @@ export class TokenFunction {
 
     call(...args) { 
         return this._func.bind(this)(...args)
+    }
+
+    shift(shift) { 
+        this._shift = shift 
     }
 
     optional(optional=true) { 

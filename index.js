@@ -11,9 +11,10 @@ sList.append([`
     let a = 5 
     let b= "yes"
 
-
     print(a)
     print(b) 
+
+    let names = ["Liam", "John", "Alex", "Bob"]
 `]).processStrings()
 
 const segmentList = sList.find([
@@ -26,7 +27,7 @@ const segmentList = sList.find([
 .find([
     TypeMatch("var_decl_info").name("var_decl_info").collapse(true),
     SPACE().opt(),
-    Or(TypeMatch("string"), Numerical()).name("value")
+    Or(TypeMatch("string"), Numerical()).collapse({value: "contents"})
 ]).transform("variable")
 .find([
     StringMatch("print"),
@@ -37,6 +38,18 @@ const segmentList = sList.find([
     SPACE().opt(),
     StringMatch(")")
 ]).transform("print_function")
-.filterEmptyStrings()
+.find([
+    StringMatch("("),
+    TypeMatch("string"), 
+    StringMatch(",").opt().shift(-1),
+    TypeMatch(")")
+]).transform("array")
+//.filterEmptyStrings()
+
+function listed(itemTokenFunction, separatedTokenFunction) { 
+    return TokenFunction.from((state)=>{ 
+        const op = itemTokenFunction.call(state)
+    })
+}
 
 console.log("Results:  ", JSON.stringify(segmentList, null, " "))
