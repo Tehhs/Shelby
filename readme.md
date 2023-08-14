@@ -31,8 +31,8 @@ end
 
 # Progress
 
-* (current) Build and perfect the custom parser
-* Use parser to compile Shelby code into json
+* (done) Build and perfect the custom parser
+* (current) Use parser to compile Shelby code into json
 * Use json ot build into NASM
 * NASM to executable
 
@@ -87,10 +87,38 @@ console.log("Results:  ", JSON.stringify(segmentList, null, " "))
 Should be transformed into the below json (or something like this)
 
 ```json
-{
-    "type": "method", 
-    "static": true,
-    "FunctionName": "main", 
-    "AccessType": "public"
-}
+[
+  "\n    ",
+  {
+   "type": "method_decl_1",
+   "value": [
+    "5"
+   ]
+  },
+  " \n    ",
+  {
+   "type": "method_decl_1",
+   "value": [
+    {
+     "type": "string",
+     "contents": "\"yes\""
+    }
+   ]
+  },
+  "\n    ",
+  {
+   "type": "print_function",
+   "variable": [
+    "a"
+   ]
+  },
+  "\n    ",
+  {
+   "type": "print_function",
+   "variable": [
+    "b"
+   ]
+  },
+  " \n"
+]
 ```
