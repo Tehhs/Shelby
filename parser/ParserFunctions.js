@@ -66,7 +66,7 @@ export const StringMatch = (str) => {
   
       return TokenOperations.NEXT; 
       
-  }).setFunctionName(`StringMatch(${str})`)
+  }).setFunctionName(`StringMatch(${str})`).join() 
 }
 
 export const Alphabetical = () => { 

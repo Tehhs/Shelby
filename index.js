@@ -10,22 +10,24 @@ const sList = new SegmentList();
 sList.append([`
     let a = 5 
     let b= "yes"
+
+
     print(a)
     print(b) 
 `]).processStrings()
 
 const segmentList = sList.find([
-    VARIABLE_DECL_TYPE(),
+    VARIABLE_DECL_TYPE().join(true),
     SPACE(), 
     VARIABLE_NAME(),
     SPACE().opt(),
     EQUALS(),
-]).transform("method_decl")
+]).transform("var_decl_info")
 .find([
-    TypeMatch("method_decl"),
+    TypeMatch("var_decl_info").name("var_decl_info").collapse(true),
     SPACE().opt(),
     Or(TypeMatch("string"), Numerical()).name("value")
-]).transform("method_decl_1")
+]).transform("variable")
 .find([
     StringMatch("print"),
     SPACE().opt(),
@@ -35,5 +37,6 @@ const segmentList = sList.find([
     SPACE().opt(),
     StringMatch(")")
 ]).transform("print_function")
+.filterEmptyStrings()
 
 console.log("Results:  ", JSON.stringify(segmentList, null, " "))

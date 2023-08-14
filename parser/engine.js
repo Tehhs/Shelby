@@ -52,16 +52,40 @@ export class Transformer {
             eSegments, 
             this.listings.map( tListing => { 
 
-                const replObj = {
+                let replObj = {
                     type: typeName
                 }
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     const tfFunc = satisfiedTfFunctionData.tfFunc 
-                    if(tfFunc.getName() != undefined) { 
-                        replObj[tfFunc.getName()] = satisfiedTfFunctionData.state
+                    if(tfFunc.getName() != undefined || tfFunc._collapse == true) { 
+                        let tfFuncStateArray = [...satisfiedTfFunctionData.state]
+
+                        //remove type of inner objects?
+                        for(const obj of tfFuncStateArray) { 
+                            if(typeof(obj) !== 'object') continue 
+                            delete obj.type 
+                        }
+
+                        //if array size = 1, collapse array 
+                        if(tfFuncStateArray.length <= 1) { 
+                            tfFuncStateArray = tfFuncStateArray[0]
+                        }
+
+                        //turn state into string type if need be 
+                        if(tfFunc._join == true) { 
+                            tfFuncStateArray= tfFuncStateArray.join("")
+                        }
+
+                        //collapse object into parent object if need be 
+                        if(tfFunc._collapse == true) { 
+                            replObj = {...replObj, ...tfFuncStateArray}
+                        }
+                        else { 
+                            replObj[tfFunc.getName()] = tfFuncStateArray
+                        }
+
                         
-                        console.log("PINEAPPLE", tfFunc )
                     }
                 }
 
@@ -169,6 +193,18 @@ export class SegmentList {
         return this 
     }
 
+    filterEmptyStrings() { 
+        this.segments = this.segments.filter(s => { 
+            console.log("??", s )
+            if(typeof(s) == "object") return true 
+            if(typeof(s) == "string") {
+                //todo should only filter empty strings not all strings, or maybe another function that throws errors of unprocessed strings
+                return false 
+            }
+            return true 
+        })
+        return this; 
+    }
 
     find(TokenFunctions) { 
         //check to make sure all "TokenFunctions" are indeed instanceof TokenFunction 
@@ -390,12 +426,23 @@ export class TokenFunction {
         this._propagate = false 
         this.functionName = undefined
         this._optional = false 
+        this._collapse = false 
+        this._join = false 
     }
 
     static from(func) { 
         const newTokenFunction = new TokenFunction() 
         newTokenFunction._func = func
         return newTokenFunction
+    }
+
+    /**
+     * If the token is an object, this function marks the object to be collapsed into it's parent object.
+     * @param {Boolean} collapse 
+     */
+    collapse(collapse=true) { 
+        this._collapse = collapse
+        return this 
     }
 
     call(...args) { 
@@ -447,6 +494,11 @@ export class TokenFunction {
 
     setFunctionName(name=undefined) { 
         this.functionName = name 
+        return this 
+    }
+
+    join(join) { 
+        this._join = join 
         return this 
     }
 }

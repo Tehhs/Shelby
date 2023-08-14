@@ -79,6 +79,7 @@ const segmentList = sList.find([
     SPACE().opt(),
     StringMatch(")")
 ]).transform("print_function")
+.filterEmptyStrings()
 
 console.log("Results:  ", JSON.stringify(segmentList, null, " "))
 ```
