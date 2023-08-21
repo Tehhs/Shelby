@@ -31,7 +31,7 @@ end
 
 # Progress
 
-* (done) Build and perfect the custom parser
+* (almost done) Build and perfect the custom parser
 * (current) Use parser to compile Shelby code into json
 * Use json ot build into NASM
 * NASM to executable
