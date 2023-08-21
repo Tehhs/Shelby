@@ -58,9 +58,17 @@ export class Transformer {
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     const tfFunc = satisfiedTfFunctionData.tfFunc 
-                    if(tfFunc.getName() != undefined || tfFunc._collapse == true) { 
-                        let tfFuncStateArray = [...satisfiedTfFunctionData.state]
+                    console.log("?S", satisfiedTfFunctionData.state)
 
+                    let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
+                        ? [...satisfiedTfFunctionData.state] : []
+
+                    if(tfFunc.stateTransformer != undefined) { 
+                        tfFuncStateArray = tfFunc.stateTransformer([...tfFuncStateArray])
+                    }
+
+                    if(tfFunc.getName() != undefined || tfFunc._collapse == true) { 
+                        
                         //remove type of inner objects?
                         for(const obj of tfFuncStateArray) { 
                             if(typeof(obj) !== 'object') continue 
@@ -429,6 +437,7 @@ export class TokenFunction {
         this._collapse = false 
         this._join = false 
         this._shift = 0 
+        this.stateTransformer = undefined 
     }
 
     static from(func) { 
@@ -452,6 +461,7 @@ export class TokenFunction {
 
     shift(shift) { 
         this._shift = shift 
+        return this 
     }
 
     optional(optional=true) { 
@@ -504,6 +514,11 @@ export class TokenFunction {
 
     join(join) { 
         this._join = join 
+        return this 
+    }
+
+    transformState(func) { 
+        this.stateTransformer = func; 
         return this 
     }
 }

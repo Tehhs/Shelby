@@ -39,16 +39,41 @@ const segmentList = sList.find([
     StringMatch(")")
 ]).transform("print_function")
 .find([
-    StringMatch("("),
-    TypeMatch("string"), 
-    StringMatch(",").opt().shift(-1),
-    TypeMatch(")")
-]).transform("array")
+    StringMatch("["),
+    LISTED(StringMatch("!"), StringMatch(",")),
+    StringMatch("]")
+])
 //.filterEmptyStrings()
 
-function listed(itemTokenFunction, separatedTokenFunction) { 
-    return TokenFunction.from((state)=>{ 
-        const op = itemTokenFunction.call(state)
+const createOpRemapper = (remapObject) => { 
+    return (opCodeInput) => { 
+        return OpRemap(opCodeInput, remapObject)
+    }
+}
+const OpRemap = (opCode, remapObject) => { 
+    return remapObject[opCode]
+}
+
+const LISTED = (tfItem, tfSeparator) => { 
+    tfItem.opt(false)
+    tfSeparator.opt(false)
+
+
+    const types = {separate: 'separate', item: 'item'}
+    const lastType = types.separate
+    let lastCut = 0
+
+    return TokenFunction.from((state)=>{
+        let newState = state.slice(lastCut, state.length)
+        let satisfied = false; 
+
+        const itemOpCode = tfItem.call(state)
+        if([TokenOperations.ACCEPT, TokenOperations.LOAD].includes(itemOpCode)) { 
+            if(lastType == types.separate) { 
+                
+            }
+        }
+        const sepOpCode = tfSeparator.call(state)
     })
 }
 
