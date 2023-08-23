@@ -19,6 +19,8 @@ sList.append([`
     ---start 
     ["Liam","John","Alex","Bob"]
     ---end 
+
+    ---nameArray liam alex john
 `]).processStrings()
 
 
@@ -26,7 +28,7 @@ sList.append([`
 const segmentList = sList.find([
     VARIABLE_DECL_TYPE().join(true),
     SPACE(), 
-    VARIABLE_NAME(),
+    VARIABLE_NAME().join(),
     SPACE().opt(),
     EQUALS(),
 ]).transform("var_decl_info")
@@ -40,7 +42,7 @@ const segmentList = sList.find([
     SPACE().opt(),
     StringMatch("("),
     SPACE().opt(),
-    Alphabetical().name("variable"),
+    Alphabetical().name("variable").join(),
     SPACE().opt(),
     StringMatch(")")
 ]).transform("print_function")
@@ -62,7 +64,7 @@ const segmentList = sList.find([
         }
         console.log("THIS = ", self)
         context.newTokenFunctionRequirement([
-            TypeMatch("string").name("string").collapse(),,
+            TypeMatch("string").name("string").collapse(),
             clone
         ])
     })
@@ -71,6 +73,16 @@ const segmentList = sList.find([
     StringMatch("---"),
     Or(StringMatch("start"), StringMatch("end")).name("eventName").join()
 ]).transform("event")
+.find([
+    StringMatch("---nameArray"),
+    SPACE(),
+    Alphabetical().push("names").join().on(TokenOperations.LOAD, (context, {self}) => { 
+        context.newTokenFunctionRequirement([
+            SPACE().opt(),
+            self.clone().opt()
+        ])
+    })
+]).transform("name_list")
 
 
 // .find([

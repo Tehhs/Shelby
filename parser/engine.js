@@ -58,6 +58,7 @@ export class Transformer {
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     const tfFunc = satisfiedTfFunctionData.tfFunc 
+                    //if(tfFunc.pushKey != undefined) debugger; 
                     console.log("?S", satisfiedTfFunctionData.state)
 
                     let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
@@ -67,6 +68,13 @@ export class Transformer {
 
                     if(tfFunc.stateTransformer != undefined) { 
                         tfFuncStateArray = tfFunc.stateTransformer([...tfFuncStateArray])
+                    }
+
+                    //todo join changes tfFuncStateArray type from array to string, might cause issues 
+                    //turn state into string type if need be 
+                    if(tfFunc._join == true) { 
+                        console.log("TRYING", tfFuncStateArray, typeof(tfFuncStateArray))
+                        tfFuncStateArray= tfFuncStateArray.join("")
                     }
 
                     if(tfFunc.getName() != undefined || tfFunc._collapse == true) { 
@@ -83,12 +91,6 @@ export class Transformer {
                         //     tfFuncStateArray = tfFuncStateArray[0]
                         // }
 
-                        //turn state into string type if need be 
-                        if(tfFunc._join == true) { 
-                            console.log("TRYING", tfFuncStateArray, typeof(tfFuncStateArray))
-                            tfFuncStateArray= tfFuncStateArray.join("")
-                        }
-
                         //collapse object into parent object if need be 
                         if(tfFunc._collapse == true) { 
                             let collapsedObj = { } 
@@ -101,8 +103,14 @@ export class Transformer {
                         else { 
                             replObj[tfFunc.getName()] = tfFuncStateArray
                         }
-
                         
+                    }
+                    if(tfFunc.pushKey != undefined) { 
+                        //debugger
+                        if(Array.isArray(replObj[tfFunc.pushKey]) != true) { 
+                            replObj[tfFunc.pushKey] = []
+                        }
+                        replObj[tfFunc.pushKey].push(tfFuncStateArray)
                     }
                 }
 
@@ -504,6 +512,7 @@ export class TokenFunction {
         this._join = false 
         this._shift = 0 
         this.stateTransformer = undefined 
+        this.pushKey = undefined 
 
         //probably should just use NodeJS Event handler but I love programming things on my own so idc
         //[..., {eventName: 'eventName', func: () => {} }]
@@ -521,6 +530,7 @@ export class TokenFunction {
         clone._join = this._join  
         clone._shift = this._shift 
         clone.stateTransformer = this.stateTransformer 
+        clone.pushKey = this.pushKey 
 
         clone.installedEvents = [...this.installedEvents]
 
@@ -623,6 +633,14 @@ export class TokenFunction {
                 eventObj.func.bind(this)(context, {self:this})
             }
         }
+    }
+
+    push(_pushKey) { 
+        if(typeof(_pushKey) != "string") { 
+            throw new Error("TokenFunction.push() requires type string, got " + typeof(_pushKey))
+        }
+        this.pushKey = _pushKey
+        return this 
     }
 }
 
