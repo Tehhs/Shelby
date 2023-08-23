@@ -15,8 +15,12 @@ sList.append([`
     print(b) 
 
     banana john
+
+    ---start 
+    ["Liam","John","Alex","Bob"]
+    ---end 
 `]).processStrings()
-//let names = ["Liam", "John", "Alex", "Bob"]
+
 
 
 const segmentList = sList.find([
@@ -40,11 +44,6 @@ const segmentList = sList.find([
     SPACE().opt(),
     StringMatch(")")
 ]).transform("print_function")
-// .find([
-//     StringMatch("banana").name("fruit").join(), 
-//     SPACE(),
-//     StringMatch("john").name("name").join()
-// ]).transform("cool")
 .find([
     StringMatch("banana").name("fruit").join()
         .on(TokenOperations.ACCEPT, (context) => { 
@@ -53,6 +52,25 @@ const segmentList = sList.find([
             )
         })
 ]).transform("found!")
+.find([
+    StringMatch("["),
+    TypeMatch("string").name("string").collapse(),
+    StringMatch(",").name("COMMA!").opt().on(TokenOperations.ACCEPT, function(context, {self}){
+        const clone = self.clone().opt()
+        if(clone == undefined) { 
+            debugger; 
+        }
+        console.log("THIS = ", self)
+        context.newTokenFunctionRequirement([
+            TypeMatch("string").name("string").collapse(),,
+            clone
+        ])
+    })
+]).transform("BIGFUNKINGARRAY___")
+.find([
+    StringMatch("---"),
+    Or(StringMatch("start"), StringMatch("end")).name("eventName").join()
+]).transform("event")
 
 
 // .find([

@@ -63,6 +63,8 @@ export class Transformer {
                     let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
                         ? [...satisfiedTfFunctionData.state] : []
 
+                    console.log("?d", tfFuncStateArray)
+
                     if(tfFunc.stateTransformer != undefined) { 
                         tfFuncStateArray = tfFunc.stateTransformer([...tfFuncStateArray])
                     }
@@ -75,19 +77,26 @@ export class Transformer {
                             delete obj.type 
                         }
 
-                        //if array size = 1, collapse array 
-                        if(tfFuncStateArray.length <= 1) { 
-                            tfFuncStateArray = tfFuncStateArray[0]
-                        }
+                        //if array size = 1, collapse array ; Edit: WHY? Don't do type changes, we pass array state not 
+                        //anything else unless collapse() or join() or similar functions
+                        // if(tfFuncStateArray.length <= 1) { 
+                        //     tfFuncStateArray = tfFuncStateArray[0]
+                        // }
 
                         //turn state into string type if need be 
                         if(tfFunc._join == true) { 
+                            console.log("TRYING", tfFuncStateArray, typeof(tfFuncStateArray))
                             tfFuncStateArray= tfFuncStateArray.join("")
                         }
 
                         //collapse object into parent object if need be 
                         if(tfFunc._collapse == true) { 
-                            replObj = {...replObj, ...tfFuncStateArray}
+                            let collapsedObj = { } 
+                            for(const arrayObj of tfFuncStateArray) { 
+                                if(typeof(arrayObj) != "object") continue; 
+                                collapsedObj = {...collapsedObj, ...arrayObj}
+                            }
+                            replObj = {...replObj, ...collapsedObj}
                         }
                         else { 
                             replObj[tfFunc.getName()] = tfFuncStateArray
@@ -221,6 +230,9 @@ export class SegmentList {
             throw new Error("TokenFunctions needs to be an array. Got " + typeof(TokenFunctions))
         }
 
+        //Easy to enter undefined entries into array if you have more than one comma [...,,...]
+        TokenFunctions = TokenFunctions.filter(tf => tf != undefined)
+
         //flatten the array 
         TokenFunctions = TokenFunctions.flat(Infinity); 
 
@@ -234,7 +246,7 @@ export class SegmentList {
         const eSegments = expandSegments(this.segments)
 
         const TokenFunctionToTokenObject = (tf) => { 
-            return { 
+            const newObj = { 
                 satisfied: false,
                 func: tf.getFunc(), 
                 tfFunc: tf,
@@ -242,6 +254,7 @@ export class SegmentList {
                 cutStart: undefined, 
                 cutEnd: undefined 
             }
+            return newObj
         }
         let satisfiedTokenFunctions = []
         function setTokenFunctionsDefault() { 
@@ -265,7 +278,7 @@ export class SegmentList {
                 tf = [tf]
             }
             //array to tokenfunctionobjects 
-            let tfObjects = tf.map( _tf => TokenFunctionToTokenObject(_tf) )
+            let tfObjects = tf.filter(_tf => _tf != undefined).map( _tf => TokenFunctionToTokenObject(_tf) )
 
             satisfiedTokenFunctions = [
                 ...satisfiedTokenFunctions.slice(0, tokenFunctionsIndex),
@@ -319,6 +332,9 @@ export class SegmentList {
                 const subExtendedSegments = eSegments.slice(startIndex, endIndex)
 
                 let currentTokenObject = satisfiedTokenFunctions[tokenFunctionsIndex]
+                if(currentTokenObject == undefined) { 
+                    debugger 
+                }
                 let satisfyFunction = currentTokenObject.func
 
                 let tokenOperation = satisfyFunction(subExtendedSegments)
@@ -478,6 +494,7 @@ export class SegmentList {
 
 export class TokenFunction { 
     constructor() { 
+        //any changes here, make sure clone() copies the changes 
         this._func = undefined 
         this._name = undefined 
         this._propagate = false 
@@ -491,6 +508,23 @@ export class TokenFunction {
         //probably should just use NodeJS Event handler but I love programming things on my own so idc
         //[..., {eventName: 'eventName', func: () => {} }]
         this.installedEvents = []
+    }
+    clone() { 
+        const clone = new TokenFunction()
+        
+        clone._func = this._func  
+        clone._name = this._name
+        clone._propagate = this._propagate 
+        clone.functionName = this._functionName
+        clone._optional = this._optional 
+        clone._collapse = this._collapse 
+        clone._join = this._join  
+        clone._shift = this._shift 
+        clone.stateTransformer = this.stateTransformer 
+
+        clone.installedEvents = [...this.installedEvents]
+
+        return clone; 
     }
 
     static from(func) { 
@@ -583,10 +617,10 @@ export class TokenFunction {
         return this 
     }
 
-    fire(eventName, ...args) {
+    fire(eventName, context) {
         for(const eventObj of this.installedEvents) { 
             if(eventObj.eventName == eventName && eventObj.func != undefined) {
-                eventObj.func(...args)
+                eventObj.func.bind(this)(context, {self:this})
             }
         }
     }
