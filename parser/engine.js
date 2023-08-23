@@ -345,6 +345,9 @@ export class SegmentList {
                 }
                 let satisfyFunction = currentTokenObject.func
 
+                if(satisfyFunction == undefined) {
+                    debugger;
+                }
                 let tokenOperation = satisfyFunction(subExtendedSegments)
                 // debugger
                 if(tokenOperation == undefined) { 
@@ -512,7 +515,10 @@ export class TokenFunction {
         this._join = false 
         this._shift = 0 
         this.stateTransformer = undefined 
+
+        //values we dont want cloned 
         this.pushKey = undefined 
+        this.tags = []
 
         //probably should just use NodeJS Event handler but I love programming things on my own so idc
         //[..., {eventName: 'eventName', func: () => {} }]
@@ -520,21 +526,34 @@ export class TokenFunction {
     }
     clone() { 
         const clone = new TokenFunction()
+        return this.applyTo(clone); 
+    }
+
+    applyTo(tfFunc) { 
+        tfFunc._func = this._func  
+        tfFunc._name = this._name
+        tfFunc._propagate = this._propagate 
+        tfFunc.functionName = this._functionName
+        tfFunc._optional = this._optional 
+        tfFunc._collapse = this._collapse 
+        tfFunc._join = this._join  
+        tfFunc._shift = this._shift 
+        tfFunc.stateTransformer = this.stateTransformer 
+        tfFunc.pushKey = this.pushKey 
+
+        tfFunc.installedEvents = [...this.installedEvents]
         
-        clone._func = this._func  
-        clone._name = this._name
-        clone._propagate = this._propagate 
-        clone.functionName = this._functionName
-        clone._optional = this._optional 
-        clone._collapse = this._collapse 
-        clone._join = this._join  
-        clone._shift = this._shift 
-        clone.stateTransformer = this.stateTransformer 
-        clone.pushKey = this.pushKey 
+        return tfFunc 
+    }
 
-        clone.installedEvents = [...this.installedEvents]
-
-        return clone; 
+    /**
+     * 
+     * @returns {TokenFunction} placeholder TokenFunction to be replaced with self/this by other functions.
+     */
+    static self() { 
+        const newTf = new TokenFunction() 
+        newTf.tags.push('self')
+        return newTf 
     }
 
     static from(func) { 
@@ -619,9 +638,12 @@ export class TokenFunction {
         return this 
     }
 
-    on(eventName, func) { 
+    on(eventNames, func) { 
+        if(Array.isArray(eventNames) != true) {
+            eventNames = [eventNames]
+        }
         this.installedEvents.push({
-            eventName, 
+            eventNames, 
             func 
         })
         return this 
@@ -629,7 +651,7 @@ export class TokenFunction {
 
     fire(eventName, context) {
         for(const eventObj of this.installedEvents) { 
-            if(eventObj.eventName == eventName && eventObj.func != undefined) {
+            if(eventObj.eventNames?.includes(eventName) && eventObj.func != undefined) {
                 eventObj.func.bind(this)(context, {self:this})
             }
         }
@@ -642,6 +664,7 @@ export class TokenFunction {
         this.pushKey = _pushKey
         return this 
     }
+
 }
 
 

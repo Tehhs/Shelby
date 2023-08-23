@@ -20,7 +20,7 @@ sList.append([`
     ["Liam","John","Alex","Bob"]
     ---end 
 
-    ---nameArray liam alex john
+    ---nameArray liam alex john 
 `]).processStrings()
 
 
@@ -76,14 +76,26 @@ const segmentList = sList.find([
 .find([
     StringMatch("---nameArray"),
     SPACE(),
-    Alphabetical().push("names").join().on(TokenOperations.LOAD, (context, {self}) => { 
-        context.newTokenFunctionRequirement([
-            SPACE().opt(),
-            self.clone().opt()
-        ])
-    })
+    Alphabetical().push("names").join().on(TokenOperations.LOAD, APPEND(
+        SPACE().opt(),
+        ({self}) => self.clone().opt() 
+    ))
 ]).transform("name_list")
 
+
+
+function APPEND(...tfFuncs) { 
+    return function(context, {self}) { 
+        
+        context.newTokenFunctionRequirement(tfFuncs.map( (tf) => {
+            if(typeof(tf) == 'function'){
+                tf = tf({self})
+            }
+
+            return tf 
+        }))
+    }
+}
 
 // .find([
 //     StringMatch("["),
