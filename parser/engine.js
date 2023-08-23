@@ -215,6 +215,15 @@ export class SegmentList {
     }
 
     find(TokenFunctions) { 
+
+        //some simple error checking for types 
+        if(Array.isArray(TokenFunctions) !== true) { 
+            throw new Error("TokenFunctions needs to be an array. Got " + typeof(TokenFunctions))
+        }
+
+        //flatten the array 
+        TokenFunctions = TokenFunctions.flat(Infinity); 
+
         //check to make sure all "TokenFunctions" are indeed instanceof TokenFunction 
         for(const tf of TokenFunctions) { 
             if( !(tf instanceof TokenFunction) ) { 
@@ -224,26 +233,46 @@ export class SegmentList {
 
         const eSegments = expandSegments(this.segments)
 
+        const TokenFunctionToTokenObject = (tf) => { 
+            return { 
+                satisfied: false,
+                func: tf.getFunc(), 
+                tfFunc: tf,
+                state: undefined, 
+                cutStart: undefined, 
+                cutEnd: undefined 
+            }
+        }
         let satisfiedTokenFunctions = []
         function setTokenFunctionsDefault() { 
             satisfiedTokenFunctions = TokenFunctions.map(tf => { 
-                return { 
-                    satisfied: false,
-                    func: tf.getFunc(), 
-                    tfFunc: tf,
-                    state: undefined, 
-                    cutStart: undefined, 
-                    cutEnd: undefined 
-                }
+                return TokenFunctionToTokenObject(tf)
             })
         }
         setTokenFunctionsDefault() 
+
+        
 
         let startIndex = 0
         let tokenFunctionsIndex = 0 
         let tempState = []
         let tempStateCutLocations = []
         let completedSets = []
+
+        const newTokenFunctionRequirement = (tf) => { 
+            //ensure array
+            if(Array.isArray(tf) != true) {
+                tf = [tf]
+            }
+            //array to tokenfunctionobjects 
+            let tfObjects = tf.map( _tf => TokenFunctionToTokenObject(_tf) )
+
+            satisfiedTokenFunctions = [
+                ...satisfiedTokenFunctions.slice(0, tokenFunctionsIndex),
+                ...tfObjects,
+                ...satisfiedTokenFunctions.slice(tokenFunctionsIndex)
+            ]
+        }
 
         function getCurrentTokenFunction() { 
             return satisfiedTokenFunctions[tokenFunctionsIndex]
@@ -275,6 +304,10 @@ export class SegmentList {
         for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
 
             for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
+
+                const EventContext = { 
+                    newTokenFunctionRequirement
+                }
                 
                 const endOfLoop = endIndex >= eSegments.length
                 if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
@@ -306,6 +339,9 @@ export class SegmentList {
                     endIndex -= 1;
                     startIndex = endIndex
 
+                    //fire LOAD event
+                    currentTokenObject.tfFunc?.fire(TokenOperations.LOAD, EventContext)
+
                     continue
                 }
 
@@ -324,7 +360,13 @@ export class SegmentList {
                         tempStateCutLocations = [] 
 
                         startIndex = endIndex
+
+                        //fire LOAD event
+                        currentTokenObject.tfFunc?.fire(TokenOperations.LOAD, EventContext)
                     }
+
+                    //fire SAVE event 
+                    currentTokenObject.tfFunc?.fire(TokenOperations.SAVE, EventContext)
 
                     continue 
                 }
@@ -354,6 +396,10 @@ export class SegmentList {
                     reset() 
 
                     startIndex = endIndex
+
+                    //fire ACCEPT event
+                    currentTokenObject.tfFunc?.fire(TokenOperations.ACCEPT, EventContext)
+
                     continue 
                 }
 
@@ -371,6 +417,9 @@ export class SegmentList {
                         reset(true) 
                         break
                     }
+
+                    //fire LOAD event
+                    currentTokenObject.tfFunc?.fire(TokenOperations.REJECT, EventContext)
                     
                 }
 
@@ -438,6 +487,10 @@ export class TokenFunction {
         this._join = false 
         this._shift = 0 
         this.stateTransformer = undefined 
+
+        //probably should just use NodeJS Event handler but I love programming things on my own so idc
+        //[..., {eventName: 'eventName', func: () => {} }]
+        this.installedEvents = []
     }
 
     static from(func) { 
@@ -512,7 +565,7 @@ export class TokenFunction {
         return this 
     }
 
-    join(join) { 
+    join(join=true) { 
         this._join = join 
         return this 
     }
@@ -520,6 +573,22 @@ export class TokenFunction {
     transformState(func) { 
         this.stateTransformer = func; 
         return this 
+    }
+
+    on(eventName, func) { 
+        this.installedEvents.push({
+            eventName, 
+            func 
+        })
+        return this 
+    }
+
+    fire(eventName, ...args) {
+        for(const eventObj of this.installedEvents) { 
+            if(eventObj.eventName == eventName && eventObj.func != undefined) {
+                eventObj.func(...args)
+            }
+        }
     }
 }
 
