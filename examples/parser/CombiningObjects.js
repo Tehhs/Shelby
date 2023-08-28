@@ -12,10 +12,20 @@ segList.processStrings()
 segList = segList
 //Process Variable Declarations 
 .find([
+  //Find the human's name (TypeMatch() which searches for object by key 'type')
   TypeMatch("human_name").name("human_name").collapse([
-    select("value").rename("NAMEE").set(true)
-  ]),
-  TypeMatch("human_age").name("human_age").collapse()
-]).transform("human_information")
+    //Collapse the object into it's parent and rename object key 'value' to 'name'
+    select("value").rename("name").set(true)
+  ]).delete(),
+
+  //Find the human's age
+  TypeMatch("human_age").name("human_age").collapse([
+    //Collapse the object into it's parent and rename object key 'value' to 'age'
+    select("value").rename("age")
+  ]).delete()
+
+])
+//Transform the object to type=human_information so future TypeMatch() calls can match it 
+.transform("human_information")
 console.log(JSON.stringify(segList, null, " "))
 

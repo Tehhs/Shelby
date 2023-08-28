@@ -94,12 +94,14 @@ export class Transformer {
                         replObj[tfFunc.pushKey].push(tfFuncStateArray)
                     }
 
-                    // Handling collapse of object into siblings and then into parent 
+                    // Handling collapse 
                     if(tfFunc._collapse == true) { 
+                        
                         const objectMappers = tfFunc.collapseObjectMappers
-                        let resultObject = {}
+                        let resultObject = {...replObj}
 
-                        // Combine sibling objects first
+                        // Instead of combining siblings first and then merging with parent, 
+                        // We're going to directly merge every sibling with the parent 
                         for(const objMapper of objectMappers) { 
                             for(const token of tfFuncStateArray) { 
                                 //We're handling strings too here, it's up to the object mapper to reject strings 
@@ -109,10 +111,15 @@ export class Transformer {
                             }
                         }
 
-                        // Combine siblings with main parent object (collapse)
-                        for(const objMapper of objectMappers) { 
-                            replObj = objMapper.map(replObj, resultObject)
-                        }
+                        replObj = {...replObj, ...resultObject}
+
+                    }
+
+                    //Delete values and objects marked for deletion 
+                    if(tfFunc._delete == true) { 
+                        delete replObj[tfFunc._name]
+                        //not sure if i want to delete arrays here too 
+                        // delete replObj[tfFunc._pushKey]
                     }
 
                     
@@ -522,6 +529,7 @@ export class TokenFunction {
         this.stateTransformer = undefined 
         this.conversionMap = {}
         this.collapseObjectMappers = []
+        this._delete = false 
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -548,6 +556,7 @@ export class TokenFunction {
         tfFunc.stateTransformer = this.stateTransformer 
         tfFunc.pushKey = this.pushKey 
         tfFunc.collapseObjectMappers = [...this.collapseObjectMappers]
+        tfFunc._delete = this._delete
 
         tfFunc.installedEvents = [...this.installedEvents]
         
@@ -626,6 +635,11 @@ export class TokenFunction {
 
     name(name) { 
         this._name = name 
+        return this 
+    }
+
+    delete(shouldDelete=true) { 
+        this._delete = shouldDelete
         return this 
     }
 
