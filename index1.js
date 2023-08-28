@@ -40,7 +40,7 @@ for(let i = 0; i < nSegments.length; i++) {
 
 /**
  *  REALLY IMPORTANT, TRUE COULD MEAN "MAYBE", and FALSE MEANS "NO"
- * 
+ *  
  * 
  * 
  * @param {*} total 

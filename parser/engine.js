@@ -515,6 +515,7 @@ export class TokenFunction {
         this._join = false 
         this._shift = 0 
         this.stateTransformer = undefined 
+        this.conversionMap = {}
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -562,12 +563,19 @@ export class TokenFunction {
         return newTokenFunction
     }
 
+    _setConversionMap(conversionMap) { 
+        this.conversionMap = conversionMap
+    }
     /**
-     * If the token is an object, this function marks the object to be collapsed into it's parent object.
+     * Combines all the objects in the token array, and collapses the function into the parent object.
+     * If the conversion map is defined and the collapse argument == true, 
      * @param {Boolean} collapse 
      */
-    collapse(collapse=true) { 
+    collapse(collapse=true, conversionMap) { 
         this._collapse = collapse
+        if(conversionMap != undefined) { 
+            this._setConversionMap(conversionMap)
+        }
         return this 
     }
 
