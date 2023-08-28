@@ -1,3 +1,7 @@
+# Parser Language 
+
+$tagName = "Liam" || "Alex" 
+
 # Shelby 
 
 Shelby is both a programming language project, and a language parsing project built for fun with no parsing library (pure javascript). Ultimately, the project is intended to compile directly to NASM Assembly. This language is still in development and is not intended for production.
