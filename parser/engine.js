@@ -59,13 +59,11 @@ export class Transformer {
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     const tfFunc = satisfiedTfFunctionData.tfFunc 
                     //if(tfFunc.pushKey != undefined) debugger; 
-                    console.log("?S", satisfiedTfFunctionData.state)
 
                     let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
                         ? [...satisfiedTfFunctionData.state] : []
 
-                    console.log("?d", tfFuncStateArray)
-
+                    //! Probably need to move this if we no longer support state transformers 
                     if(tfFunc.stateTransformer != undefined) { 
                         tfFuncStateArray = tfFunc.stateTransformer([...tfFuncStateArray])
                     }
@@ -77,34 +75,17 @@ export class Transformer {
                         tfFuncStateArray= tfFuncStateArray.join("")
                     }
 
-                    if(tfFunc.getName() != undefined || tfFunc._collapse == true) { 
-                        
-                        //remove type of inner objects?
-                        for(const obj of tfFuncStateArray) { 
-                            if(typeof(obj) !== 'object') continue 
-                            delete obj.type 
-                        }
-
-                        //if array size = 1, collapse array ; Edit: WHY? Don't do type changes, we pass array state not 
-                        //anything else unless collapse() or join() or similar functions
-                        // if(tfFuncStateArray.length <= 1) { 
-                        //     tfFuncStateArray = tfFuncStateArray[0]
-                        // }
-
-                        //collapse object into parent object if need be 
-                        if(tfFunc._collapse == true) { 
-                            let collapsedObj = { } 
-                            for(const arrayObj of tfFuncStateArray) { 
-                                if(typeof(arrayObj) != "object") continue; 
-                                collapsedObj = {...collapsedObj, ...arrayObj}
-                            }
-                            replObj = {...replObj, ...collapsedObj}
-                        }
-                        else { 
-                            replObj[tfFunc.getName()] = tfFuncStateArray
-                        }
-                        
+                    //remove type of inner objects?
+                    for(const obj of tfFuncStateArray) { 
+                        if(typeof(obj) !== 'object') continue 
+                        delete obj.type 
                     }
+
+                    // Setting value to key name 
+                    if(tfFunc.getName() != undefined) { 
+                        replObj[tfFunc.getName()] = [...tfFuncStateArray]
+                    }
+
                     if(tfFunc.pushKey != undefined) { 
                         //debugger
                         if(Array.isArray(replObj[tfFunc.pushKey]) != true) { 
@@ -112,8 +93,32 @@ export class Transformer {
                         }
                         replObj[tfFunc.pushKey].push(tfFuncStateArray)
                     }
+
+                    // Handling collapse of object into siblings and then into parent 
+                    if(tfFunc._collapse == true) { 
+                        const objectMappers = tfFunc.collapseObjectMappers
+                        let resultObject = {}
+
+                        // Combine sibling objects first
+                        for(const objMapper of objectMappers) { 
+                            for(const token of tfFuncStateArray) { 
+                                //We're handling strings too here, it's up to the object mapper to reject strings 
+                                const newResultObject = objMapper.map(resultObject, token)
+                               
+                                resultObject = {...newResultObject}
+                            }
+                        }
+
+                        // Combine siblings with main parent object (collapse)
+                        for(const objMapper of objectMappers) { 
+                            replObj = objMapper.map(replObj, resultObject)
+                        }
+                    }
+
+                    
                 }
 
+                // Return the array for the transformation of the actual segments 
                 return [
                     tListing.start, 
                     tListing.end, 
@@ -516,6 +521,7 @@ export class TokenFunction {
         this._shift = 0 
         this.stateTransformer = undefined 
         this.conversionMap = {}
+        this.collapseObjectMappers = []
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -541,6 +547,7 @@ export class TokenFunction {
         tfFunc._shift = this._shift 
         tfFunc.stateTransformer = this.stateTransformer 
         tfFunc.pushKey = this.pushKey 
+        tfFunc.collapseObjectMappers = [...this.collapseObjectMappers]
 
         tfFunc.installedEvents = [...this.installedEvents]
         
@@ -569,13 +576,20 @@ export class TokenFunction {
     /**
      * Combines all the objects in the token array, and collapses the function into the parent object.
      * If the conversion map is defined and the collapse argument == true, 
-     * @param {Boolean} collapse 
+     * @param {ObjectMapper[]} objectMappers 
      */
-    collapse(collapse=true, conversionMap) { 
-        this._collapse = collapse
-        if(conversionMap != undefined) { 
-            this._setConversionMap(conversionMap)
+    collapse(objectMappers=[]) { 
+        // if(Array.isArray(objectMappers) != true) {
+        //     throw new Error("Cannot collapse with array of ObjectMappers, got " + objectMappers)
+        // }
+
+        this._collapse = true
+        for(const objectMapper of objectMappers) { 
+            if( !(objectMapper instanceof ObjectMapper)) { 
+                throw new Error(`${objectMapper} is not an ObjectMapper!`)
+            }
         }
+        this.collapseObjectMappers = [...objectMappers]
         return this 
     }
 
@@ -675,6 +689,78 @@ export class TokenFunction {
 
 }
 
+export const select = (key) => { 
+    return new ObjectMapper(key); 
+}
+export class ObjectMapper { 
+    constructor(key) { 
+        this.key = key 
+        this.newKey = undefined
+        this.shouldPush = false 
+    }
+
+    rename(newKey) { 
+        this.newKey = newKey; 
+        return this 
+    }
+
+    set(shouldSet=true) { 
+        this.shouldPush = !shouldSet; 
+        return this; 
+    }
+
+    push(shouldPush=true) { 
+        this.shouldPush = shouldPush; 
+        return this; 
+    }
+
+    map(originObject, mergingObject) { 
+        // Can decide to handle non object types here if you want but for now we're not handling those 
+        if(typeof(mergingObject) != 'object') return originObject; 
 
 
+        // Error checking 
+        for(const obj of [{type: "origin", obj: originObject}, {type: 'merger', obj: mergingObject}]) { 
+            if(typeof(obj.obj) != 'object') { 
+                throw new Error(`ObjectMapper.map() invalid argument; Param type '${obj.type}' got ` + obj.obj)
+            }
+        }
+        if(this.key == undefined) { 
+            throw new Error("ObjectMapper cannot do any mapping of any kind with undefined key.")
+        }
 
+        // Object mapping 
+        const outputObject = {...originObject}
+
+        // Object mapping - renaming keys 
+        if(this.rename != undefined) { 
+            const value = mergingObject[this.key]
+
+
+            // Handle pushes to arrays 
+            if(this.shouldPush == true) { 
+                if(Array.isArray(outputObject[this.newKey]) == false) { 
+                    outputObject[this.newKey] = [outputObject[this.newKey], value]
+                } else { 
+                    outputObject[this.newKey] = [...outputObject[this.newKey], value]
+                }
+            } else {
+                outputObject[this.newKey] = value 
+            }
+            
+        }
+
+
+        
+
+
+        return outputObject; 
+    }
+}
+
+// console.log("TT")
+// const newObj = select("name").rename("_name").push(true).map(
+//     {age: 25, _name: ["alex"]},
+//     {name: "liam"}
+// )
+// console.log(">>", newObj)
