@@ -72,7 +72,8 @@ export class Transformer {
                     //turn state into string type if need be 
                     if(tfFunc._join == true) { 
                         console.log("TRYING", tfFuncStateArray, typeof(tfFuncStateArray))
-                        tfFuncStateArray= tfFuncStateArray.join("")
+                        tfFuncStateArray = tfFuncStateArray.join("")
+                        console.log("done? ", tfFuncStateArray)
                     }
 
                     //remove type of inner objects?
@@ -83,7 +84,7 @@ export class Transformer {
 
                     // Setting value to key name 
                     if(tfFunc.getName() != undefined) { 
-                        replObj[tfFunc.getName()] = [...tfFuncStateArray]
+                        replObj[tfFunc.getName()] = tfFuncStateArray
                     }
 
                     if(tfFunc.pushKey != undefined) { 

@@ -4,7 +4,9 @@ import { Alphabetical, Numerical, Or, Space, StringMatch, TypeMatch } from "../.
 let segList = new SegmentList()
 segList.append([
   {type: "human_name", value: "James"},
-  {type: "human_age", value: 25}
+  {type: "human_age", value: 25},
+  {type: "human_hobby", value: "dancing"}, 
+  {type: "human_hobby", value: "swimming"}
 ])
 
 segList.processStrings() 
@@ -22,7 +24,14 @@ segList = segList
   TypeMatch("human_age").name("human_age").collapse([
     //Collapse the object into it's parent and rename object key 'value' to 'age'
     select("value").rename("age")
-  ]).delete()
+  ]).delete(),
+
+  //todo name hobbies almost useless, make it so we dont need to name() to collapse object
+  //Process the hobbies and make a list 
+  TypeMatch("human_hobby").name("hobbies").collapse([
+    //Collapse the object into it's parent and rename object key 'value' to 'age'
+    select("value").rename("hobbies").push()
+  ])//.delete()
 
 ])
 //Transform the object to type=human_information so future TypeMatch() calls can match it 
