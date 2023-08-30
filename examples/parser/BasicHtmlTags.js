@@ -44,6 +44,8 @@ segList = segList
 
 .filterEmptyStrings()
 
+
+
 //This example could be improved by showing how you can ensure the parser looks for the correct closing tag 
 //this can be done with the context object, but do you even want to do that in the first place? might kill the 
 //parse process because of some tag incompatibility 

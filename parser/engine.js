@@ -57,7 +57,10 @@ export class Transformer {
                 }
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
-                    const tfFunc = satisfiedTfFunctionData.tfFunc 
+                    let tfFunc = satisfiedTfFunctionData.tfFunc 
+                    if(tfFunc._delegate == true) { 
+                        tfFunc = tfFunc._delegation == undefined ? tfFunc : tfFunc._delegation
+                    }
                     //if(tfFunc.pushKey != undefined) debugger; 
 
                     let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
@@ -73,6 +76,7 @@ export class Transformer {
                     if(tfFunc._join == true) { 
                         console.log("TRYING", tfFuncStateArray, typeof(tfFuncStateArray))
                         tfFuncStateArray = tfFuncStateArray.join("")
+                        // tfFuncStateArray = compactSegments(tfFuncStateArray) // should handle objects too but doesnt return string, returns array which is ugly 
                         console.log("done? ", tfFuncStateArray)
                     }
 
@@ -356,12 +360,17 @@ export class SegmentList {
                 if(currentTokenObject == undefined) { 
                     debugger 
                 }
-                let satisfyFunction = currentTokenObject.func
 
+                let satisfyFunction = currentTokenObject.func
                 if(satisfyFunction == undefined) {
                     debugger;
                 }
-                let tokenOperation = satisfyFunction(subExtendedSegments)
+                if(subExtendedSegments == undefined) { 
+                    debugger;
+                }
+
+                //debugger
+                let tokenOperation = currentTokenObject.tfFunc.call({state: subExtendedSegments, self: currentTokenObject.tfFunc})
                 // debugger
                 if(tokenOperation == undefined) { 
                     throw new Error("Got Undefined TokenOperation")
@@ -531,6 +540,8 @@ export class TokenFunction {
         this.conversionMap = {}
         this.collapseObjectMappers = []
         this._delete = false 
+        this._delegation = undefined 
+        this._delegate = false 
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -558,6 +569,8 @@ export class TokenFunction {
         tfFunc.pushKey = this.pushKey 
         tfFunc.collapseObjectMappers = [...this.collapseObjectMappers]
         tfFunc._delete = this._delete
+        tfFunc._delegation = this._delegation
+        tfFunc._delegate = this._delegate
 
         tfFunc.installedEvents = [...this.installedEvents]
         
@@ -576,7 +589,7 @@ export class TokenFunction {
 
     static from(func) { 
         const newTokenFunction = new TokenFunction() 
-        newTokenFunction._func = func
+        newTokenFunction._func = func.bind(newTokenFunction)
         return newTokenFunction
     }
 
@@ -603,8 +616,32 @@ export class TokenFunction {
         return this 
     }
 
-    call(...args) { 
-        return this._func.bind(this)(...args)
+    /**
+     * 
+     * ! WARNING: Potential errors due to multiple functions delegating to same function. Need 
+     * ! to check for delegations of same TokenFunction. Potentially need to clone the input 
+     * ! delegation TokenFunction and then assign to this._delegation 
+     * 
+     * When the transformer deals with this TokenFunction, it will instead handle the 
+     * TokenFunction we delegate to. Useful for Or operations where the Or TokenFunction
+     * can delegate control over to the child TokenFunction the tokens have matched 
+     * with. 
+     * 
+     * @param {TokenFunction} tokenFunction 
+     */
+    delegateTo(tokenFunction) { 
+        if(tokenFunction == undefined) { 
+            throw new Error("Cannot delegate to non-TokenFunction; got " + tokenFunction)
+        }
+        this._delegation = tokenFunction
+    }
+
+    /**
+     * Signals to the transformer that the delegation should be respected 
+     * @param {boolean} shouldDelegate 
+     */
+    delegate(shouldDelegate) { 
+        this._delegate = shouldDelegate; 
     }
 
     shift(shift) { 
@@ -657,6 +694,10 @@ export class TokenFunction {
         if(typeof(this._func) != 'function') { 
             throw Error("Tried to fire non function type; Got " + this._func)
         }
+        if(args[0].state == undefined) { 
+            throw new Error("call() called with incorrect arguments. Should be called with ({state}); got " + JSON.stringify(args))
+        }
+        args[0].self = this
         return this._func.bind(this)(...args)
     }
 
@@ -743,6 +784,11 @@ export class ObjectMapper {
         if(this.key == undefined) { 
             throw new Error("ObjectMapper cannot do any mapping of any kind with undefined key.")
         }
+        if(mergingObject[this.key] == undefined) { 
+            return originObject; 
+        }
+
+        //debugger 
 
         // Object mapping 
         const outputObject = {...originObject}
@@ -751,10 +797,11 @@ export class ObjectMapper {
         if(this.rename != undefined) { 
             const value = mergingObject[this.key]
 
-
             // Handle pushes to arrays 
             if(this.shouldPush == true) { 
-                if(Array.isArray(outputObject[this.newKey]) == false) { 
+                if(outputObject[this.newKey] == undefined) {
+                    outputObject[this.newKey] = [value]
+                } else if (Array.isArray(outputObject[this.newKey]) == false) { 
                     outputObject[this.newKey] = [outputObject[this.newKey], value]
                 } else { 
                     outputObject[this.newKey] = [...outputObject[this.newKey], value]
@@ -773,9 +820,9 @@ export class ObjectMapper {
     }
 }
 
-// console.log("TT")
-// const newObj = select("name").rename("_name").push(true).map(
-//     {age: 25, _name: ["alex"]},
-//     {name: "liam"}
-// )
-// console.log(">>", newObj)
+console.log("TT")
+const newObj = select("aaa").rename("bbb").push(true).map(
+    {age: 25, _name: ["alex"]},
+    {name: "liam"}
+)
+console.log(">>", newObj)

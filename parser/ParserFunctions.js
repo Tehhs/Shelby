@@ -1,15 +1,21 @@
 import { TokenOperations, TokenFunction } from "./Engine.js";
 
 export const Or = (...tokenFunctions) => { 
-    return TokenFunction.from((state)=>{
+    return TokenFunction.from(({self, state})=>{
         let allRejected = true  
         for(const tfFunc of tokenFunctions) { 
-            const op = tfFunc.call(state)
+            const op = tfFunc.call({self, state})
             if(op != TokenOperations.REJECT) {
                 allRejected = false 
             }
-            if(op == TokenOperations.ACCEPT) return TokenOperations.ACCEPT;
-            if(op == TokenOperations.LOAD) return TokenOperations.LOAD;
+            if(op == TokenOperations.ACCEPT) {
+                self.delegateTo(tfFunc)
+                return TokenOperations.ACCEPT
+            };
+            if(op == TokenOperations.LOAD) {
+                self.delegateTo(tfFunc)
+                return TokenOperations.LOAD;
+            }
         }
         if(allRejected == true) { 
             return TokenOperations.REJECT
@@ -19,7 +25,7 @@ export const Or = (...tokenFunctions) => {
 }
 
 export const Space = (optional=false) => { 
-    return TokenFunction.from((state) => { 
+    return TokenFunction.from(({state}) => { 
         // console.log(`SPACE PROCESSING "${state.join("")}"`)
         const last = state[state.length-1]
 
@@ -46,7 +52,8 @@ export const MultiStringMatch = (...strs) => {
 }
 
 export const TypeMatch = (type) => { 
-    return TokenFunction.from((state) => {
+    return TokenFunction.from(({state, self}) => {
+        if(state == undefined) debugger;
         const last = state[state.length-1]
         if(typeof(last) != "object") return TokenOperations.REJECT
         if(last.type != type) return TokenOperations.REJECT
@@ -55,7 +62,8 @@ export const TypeMatch = (type) => {
 }
 
 export const StringMatch = (str) => { 
-  return TokenFunction.from((state) => { 
+  return TokenFunction.from(({state}) => { 
+        //const {state, self} = wtf; 
       if(state.join("") == str) { 
           return TokenOperations.ACCEPT; 
       }  
@@ -70,7 +78,7 @@ export const StringMatch = (str) => {
 }
 
 export const Alphabetical = () => { 
-  return TokenFunction.from((state)=>{
+  return TokenFunction.from(({state})=>{
       const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")
       const last = state[state.length-1] 
       const rejectOperation = state.length > 1 ? TokenOperations.LOAD : TokenOperations.REJECT
@@ -87,7 +95,7 @@ export const Alphabetical = () => {
 }
 
 export const Numerical = () => { 
-  return TokenFunction.from((state)=>{
+  return TokenFunction.from(({state})=>{
       const allowed = "1234567890".split("")
       const last = state[state.length-1] 
       const rejectOperation = state.length > 1 ? TokenOperations.LOAD : TokenOperations.REJECT
