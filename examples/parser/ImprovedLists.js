@@ -30,14 +30,14 @@ segList = segList.find([
   Space().opt(),
   StringMatch("="),
   Space().opt(), 
-  TypeMatch("list").name("the_list")
+  TypeMatch("list").collapse([
+    //todo kinda weird here
+    select("items").rename("items") 
+  ]).delete()
 ]).transform("variable")
-
-
+//todo in the final object if you want to add extra keys ("variable_type = array") allow that 
+//todo in the transform, supply object instead and append type to object if not supplied?
 
 
 console.log("FINAL =", JSON.stringify(segList, null, " "))
 
-/* 
-
-*/ 

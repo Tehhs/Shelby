@@ -44,6 +44,8 @@ class ConditionalTokenFunctionGenerator {
   _transformSelfs(tokenFunctionList) { 
     return tokenFunctionList.map( tokenFunction => { 
       if(tokenFunction.hasTag("self")) { 
+        //maybe we also want to clone the TokenFunctions too here? 
+        //and not just the Generator? 
         return this.clone().end() 
       } else { 
         return tokenFunction
