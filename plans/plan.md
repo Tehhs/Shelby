@@ -28,3 +28,29 @@ Segments.find([
     MethodBlock().name("method_block").propagate(),
     Opt(StringMatch(",")).reset() 
 ).transform("method") 
+
+
+
+find(
+    StringMatch("["),
+    alphanumeric(),
+    if(comma()).then(
+        alphanumeric(), 
+        self() // the if condition
+    )
+    StringMatch("]")
+).to("list")
+
+find(
+    StringMatch("A"), 
+    if(StringMatch("B")).then(
+        StringMatch("C"),
+        if(StringMatch("D")).then(
+            StringMatch("E")
+        )
+    ).elseif(StringMatch("5")).then(StringMatch("6"))
+    .else(
+        StringMatch("6"),
+        StringMatch("7")
+    )
+).to("alphabet")

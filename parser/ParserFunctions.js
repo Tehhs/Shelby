@@ -1,5 +1,19 @@
 import { TokenOperations, TokenFunction } from "./Engine.js";
 
+export function CaptureUntil (...disallowedStringsArray) { 
+    return TokenFunction.from(
+      ({state}) => { 
+        const lastState = state[state.length-1];
+        if(disallowedStringsArray.includes(lastState)) { 
+          return TokenOperations.LOAD;
+        } else { 
+          return TokenOperations.SAVE;
+        }
+      }
+    )
+}
+
+  
 export const Or = (...tokenFunctions) => { 
     return TokenFunction.from(({self, state})=>{
         let allRejected = true  
@@ -68,7 +82,7 @@ export const StringMatch = (str) => {
           return TokenOperations.ACCEPT; 
       }  
           
-      if(state.length > str.length) { 
+      if(state.length >= str.length) { 
           return TokenOperations.REJECT
       }
   
@@ -93,6 +107,23 @@ export const Alphabetical = () => {
       return TokenOperations.SAVE;
   }).setFunctionName("Alphabetical")
 }
+
+export const Alphanumeric = () => { 
+    return TokenFunction.from(({state})=>{
+        const allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890".split("")
+        const last = state[state.length-1] 
+        const rejectOperation = state.length > 1 ? TokenOperations.LOAD : TokenOperations.REJECT
+  
+        if(typeof(last) == 'object' || Array.isArray(last)) { 
+            return rejectOperation; 
+        }
+        if(!allowed.includes(last)) { 
+            return rejectOperation; 
+        }
+        
+        return TokenOperations.SAVE;
+    }).setFunctionName("Alphabetical")
+  }
 
 export const Numerical = () => { 
   return TokenFunction.from(({state})=>{

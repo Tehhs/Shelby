@@ -342,7 +342,7 @@ export class SegmentList {
         for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
 
             for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
-
+               
                 const EventContext = { 
                     newTokenFunctionRequirement
                 }
@@ -361,6 +361,10 @@ export class SegmentList {
                     debugger 
                 }
 
+                if(currentTokenObject.tfFunc._debug == true) { 
+                    debugger 
+                }
+
                 let satisfyFunction = currentTokenObject.func
                 if(satisfyFunction == undefined) {
                     debugger;
@@ -371,7 +375,8 @@ export class SegmentList {
 
                 //debugger
                 let tokenOperation = currentTokenObject.tfFunc.call({state: subExtendedSegments, self: currentTokenObject.tfFunc})
-                // debugger
+                //debugger
+               
                 if(tokenOperation == undefined) { 
                     throw new Error("Got Undefined TokenOperation")
                 }
@@ -542,6 +547,7 @@ export class TokenFunction {
         this._delete = false 
         this._delegation = undefined 
         this._delegate = false 
+        this._debug = false 
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -554,6 +560,15 @@ export class TokenFunction {
     clone() { 
         const clone = new TokenFunction()
         return this.applyTo(clone); 
+    }
+
+    debug(shouldDebug=true) { 
+        this._debug = shouldDebug 
+        return this 
+    }
+
+    hasTag(tag) { 
+        return this.tags.includes(tag) 
     }
 
     applyTo(tfFunc) { 
@@ -571,6 +586,7 @@ export class TokenFunction {
         tfFunc._delete = this._delete
         tfFunc._delegation = this._delegation
         tfFunc._delegate = this._delegate
+        tfFunc._debug = this._debug
 
         tfFunc.installedEvents = [...this.installedEvents]
         
