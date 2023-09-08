@@ -15,26 +15,50 @@ export function CaptureUntil (...disallowedStringsArray) {
 
   
 export const Or = (...tokenFunctions) => { 
-    return TokenFunction.from(({self, state})=>{
-        let allRejected = true  
-        for(const tfFunc of tokenFunctions) { 
-            const op = tfFunc.call({self, state})
-            if(op != TokenOperations.REJECT) {
-                allRejected = false 
+    let hasSaved = false 
+    let removed = []
+   
+    return TokenFunction.from(function({self, state, end}){
+        let shouldSave = false 
+        for(const [i,tfFunc] of tokenFunctions.entries()) { 
+            if(removed.includes(tfFunc)) continue; 
+            if(removed.length >= tokenFunctions.length) {
+                removed = []
+                return TokenOperations.REJECT
+            }; 
+
+            let op = tfFunc.call({self, state})
+            
+            if(op == TokenOperations.REJECT) {
+                removed.push(tfFunc)
+                continue; 
             }
             if(op == TokenOperations.ACCEPT) {
+                removed = []
                 self.delegateTo(tfFunc)
                 return TokenOperations.ACCEPT
             };
             if(op == TokenOperations.LOAD) {
-                self.delegateTo(tfFunc)
-                return TokenOperations.LOAD;
+                removed = [] //issue here?
+                if(hasSaved == true) { 
+                    self.delegateTo(tfFunc)
+                    return TokenOperations.LOAD;
+                }
+            }
+            if(op == TokenOperations.SAVE) {
+                shouldSave = true 
             }
         }
-        if(allRejected == true) { 
-            return TokenOperations.REJECT
+        if(shouldSave == true) { 
+            if(end == true) { //todo the fact that we're using end logic here makes building token functions a potential mess. Hopefully this is only something we need to do in OR logic. 
+                removed = []
+            }
+            return TokenOperations.SAVE
         }
-        return TokenOperations.SAVE
+        if(end == true) { 
+            removed = []
+        }
+        return TokenOperations.NEXT
     })
 }
 
@@ -86,10 +110,13 @@ export const StringMatch = (str) => {
           return TokenOperations.REJECT
       }
   
+      //DO NOT use SAVE here, SAVE=Accept but next token might be valid too, SAVE != MAYBE ACCEPTABLE 
       return TokenOperations.NEXT; 
       
   }).setFunctionName(`StringMatch(${str})`).join() 
 }
+
+
 
 export const Alphabetical = () => { 
   return TokenFunction.from(({state})=>{
@@ -140,4 +167,32 @@ export const Numerical = () => {
       
       return TokenOperations.SAVE;
   }).setFunctionName("Alphabetical")
+}
+
+
+export const AllowOnly = (charsInString="") => { 
+    // return TokenFunction.from(({state})=>{
+    //     const allowedArray = charsInString.split("")
+    //     for(const stateToken in state) { 
+    //         if(allowedArray.includes(stateToken) == false) { 
+    //             return TokenOperations.REJECT
+    //         }
+    //     }
+    // })
+}
+export const StringMatch2 = (str) => { 
+    // return TokenFunction.from(({state}) => { 
+    //     const required = str.split("")
+    //     const view = [...state]
+
+    //     let valid = true 
+    //     for(const [vi, vn] of view.entries()) { 
+    //         const rn = required[vi] 
+    //         if(rn != vn) { 
+    //             valid = false 
+    //         }
+    //     }
+
+    //     console.log(valid) 
+    // })
 }

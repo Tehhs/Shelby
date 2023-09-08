@@ -1,6 +1,26 @@
 import { compactSegments, expandSegments, multiSegmentReplace, split } from "./internal.js"
 import fs from 'fs'
 
+/**
+ * This needs to be document because I keep forgetting what this signals even mean
+ * SAVE = The current state is acceptable (and will be accepted on end of input) BUT future input/state
+ *  might be also acceptable. So SAVE saves the state and moves forward with input. This might be useful
+ *  for capturing state for input you can't exactly string match for. Like alphanumeric input captures.
+ * 
+ * LOAD = Load takes the previously captured state and accepts it for processing by that token function. 
+ * 
+ * ACCEPT = Takes the current literal input and accepts that for processing by current token function. 
+ * 
+ * REJECT = Do not accept current input, reject the entire token function set. No input is transformed.
+ * 
+ * NEXT = Similar to save, as it moves forward in the input BUT it doesn't save anything for later acceptance.
+ * 
+ * It's important to understand that SAVE does not mean the input it MAYBE acceptable. SAVE means the current 
+ * input IS acceptable, but future input might also be acceptable to we're not exactly saving the current 
+ * input at the current point in the input. 
+ * So basically: SAVE=Accept but next token might be valid too, SAVE != MAYBE ACCEPTABLE 
+ * 
+ */
 export const TokenOperations = {
     // IGNORE: "IGNORE", //Replaced by setting the token function to optional
     SAVE: "SAVE", 
@@ -374,7 +394,11 @@ export class SegmentList {
                 }
 
                 //debugger
-                let tokenOperation = currentTokenObject.tfFunc.call({state: subExtendedSegments, self: currentTokenObject.tfFunc})
+                let tokenOperation = currentTokenObject.tfFunc.call({
+                    state: subExtendedSegments, 
+                    self: currentTokenObject.tfFunc,
+                    end: endOfLoop
+                })
                 //debugger
                
                 if(tokenOperation == undefined) { 
@@ -382,6 +406,11 @@ export class SegmentList {
                 }
 
                 if(tokenOperation == TokenOperations.LOAD) { 
+                    if(tempState.length <= 0) { 
+                        throw new Error("Tried to LOAD with no saved state. Probably no SAVE operation before LOAD")
+                        //todo maybe there's a better way to handle this besides just throwing an error. 
+                        //todo but then again if length <= 0 something is very wrong and probably should throw error 
+                    }
                     saveState(tempState, tempStateCutLocations[0], tempStateCutLocations[1])
                     satisfy() 
                     nextTokenFunction() 
@@ -714,7 +743,9 @@ export class TokenFunction {
             throw new Error("call() called with incorrect arguments. Should be called with ({state}); got " + JSON.stringify(args))
         }
         args[0].self = this
-        return this._func.bind(this)(...args)
+        const newFunc = this._func.bind(this)
+        const newOp = newFunc(...args)
+        return newOp
     }
 
     setFunctionName(name=undefined) { 

@@ -54,3 +54,27 @@ find(
         StringMatch("7")
     )
 ).to("alphabet")
+
+todo 
+better way to handle scopes 
+tokenfunction generators should use allow() for things like Alphanumeric() and numeric()
+exttra object keys after transform besides object type 
+final transform operation function to change the object after all other transform operations (so we can use custom js to finalise everything)
+
+
+access_type => "public", "private", "protected" 
+    name: "access_type"
+static_keyword.opt => "static" 
+    optional: true 
+return_type => "void", "int", "string"
+name => $alphanumeric
+
+java_method_decl = access_type, static_keyword.opt, return_type, name
+
+
+
+
+
+
+
+

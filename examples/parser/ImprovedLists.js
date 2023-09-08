@@ -10,6 +10,7 @@ const Comma = () => StringMatch(",")
 let segList = new SegmentList()
 segList.append([`
   let list = [item1,jamesBond,liam,askljdfbnaskljhdfbn]
+  let array = [pineapple,--jam]
 `])
 
 
