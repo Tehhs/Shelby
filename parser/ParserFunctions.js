@@ -19,6 +19,12 @@ export const Or = (...tokenFunctions) => {
     let removed = []
    
     return TokenFunction.from(function({self, state, end}){
+        const endCheck = () => { 
+            //todo the fact that we're using 'end' logic here makes building token functions a potential mess. Hopefully this is only something we need to do in OR logic. 
+            if(end == true) { 
+                removed = []
+            }
+        }
         let shouldSave = false 
         for(const [i,tfFunc] of tokenFunctions.entries()) { 
             if(removed.includes(tfFunc)) continue; 
@@ -50,14 +56,11 @@ export const Or = (...tokenFunctions) => {
             }
         }
         if(shouldSave == true) { 
-            if(end == true) { //todo the fact that we're using end logic here makes building token functions a potential mess. Hopefully this is only something we need to do in OR logic. 
-                removed = []
-            }
+            endCheck()
+            hasSaved = true
             return TokenOperations.SAVE
         }
-        if(end == true) { 
-            removed = []
-        }
+        endCheck()
         return TokenOperations.NEXT
     })
 }

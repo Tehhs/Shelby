@@ -393,6 +393,8 @@ export class SegmentList {
                     debugger;
                 }
 
+                const atLastToken = (tokenFunctionsIndex+1) >= satisfiedTokenFunctions.length
+
                 //debugger
                 let tokenOperation = currentTokenObject.tfFunc.call({
                     state: subExtendedSegments, 
@@ -455,7 +457,10 @@ export class SegmentList {
                 }
 
                 if(tokenOperation == TokenOperations.NEXT) { 
-                    if(endOfLoop == true && currentTokenObject.tfFunc.isOptional() == true) { 
+                    if(endOfLoop == true 
+                        && currentTokenObject.tfFunc.isOptional() == true
+                        && atLastToken == false 
+                    ) { 
                         //move back and use input for next token, only if current is optional
                         satisfy() 
                         nextTokenFunction() 

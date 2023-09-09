@@ -6,16 +6,27 @@ import { $if } from "../../parser/ConditionalSystem.js";
 
 const BooleanType = () => MultiStringMatch("true", "false") 
 const StringType = () => TypeMatch("string")
-const Item = () => Or(Numerical(), BooleanType())
+const VariableName = () => Alphabetical()
+const Item = () => Or(Numerical(), BooleanType(), VariableName()).push("values").join()
 const Comma = () => StringMatch(",")
 
 let segList = new SegmentList()
-segList.append([`false 12`])
+segList.append([`[var,12,true]`])
 segList.processStrings() 
 
 
 segList = segList.find([
-  Or(Numerical(), StringMatch("false")).name("value").join()
+  StringMatch("["),
+  Item(),
+  $if(Comma().opt()).then(
+    Item(),
+    TokenFunction.self()
+  ).end()
+  
+  // $if(Comma().opt()).then(
+  //   Or(Numerical(), BooleanType()).push("values").join()
+  // ).end()
+
 ]).transform("variable_value")
 
 
