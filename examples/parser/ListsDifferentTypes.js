@@ -5,28 +5,24 @@ import { Alphabetical, Alphanumeric, MultiStringMatch, Numerical, Or, Space, Str
 import { $if } from "../../parser/ConditionalSystem.js";
 
 const BooleanType = () => MultiStringMatch("true", "false") 
-const StringType = () => TypeMatch("string")
 const VariableName = () => Alphabetical()
+//! NEXT, wokr out how to give child tfFuncs in OR control over transformation, stringtype collapses is example 
 const Item = () => Or(Numerical(), BooleanType(), VariableName()).push("values").join()
 const Comma = () => StringMatch(",")
 
 let segList = new SegmentList()
-segList.append([`[var,12,true]`])
+segList.append([`[var,12,true,52,55]`])
 segList.processStrings() 
 
 
 segList = segList.find([
   StringMatch("["),
-  Item(),
+  Item().opt(),
   $if(Comma().opt()).then(
     Item(),
     TokenFunction.self()
-  ).end()
-  
-  // $if(Comma().opt()).then(
-  //   Or(Numerical(), BooleanType()).push("values").join()
-  // ).end()
-
+  ).end(),
+  StringMatch("]")
 ]).transform("variable_value")
 
 

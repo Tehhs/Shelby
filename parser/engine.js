@@ -582,6 +582,7 @@ export class TokenFunction {
         this._delegation = undefined 
         this._delegate = false 
         this._debug = false 
+        this._changedProps = []
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -590,6 +591,21 @@ export class TokenFunction {
         //probably should just use NodeJS Event handler but I love programming things on my own so idc
         //[..., {eventName: 'eventName', func: () => {} }]
         this.installedEvents = []
+    }
+
+    applyChangesTo(tokenFunction) { 
+        if( !(tokenFunction instanceof TokenFunction)) { 
+            throw new Error("Cannot apply TokenFunction changes to non-TokenFunction parameter: " + tokenFunction)
+        }
+        for(const propName of this._changedProps) { 
+            const propValue = this[propName]
+            if(Array.isArray(propValue)) { 
+                tokenFunction[propName] = [...propValue]
+            } else { 
+                tokenFunction[propName] = propValue
+            }
+        }
+        tokenFunction._changedProps = [...tokenFunction._changedProps, ...this._changedProps]
     }
     clone() { 
         const clone = new TokenFunction()
@@ -621,6 +637,7 @@ export class TokenFunction {
         tfFunc._delegation = this._delegation
         tfFunc._delegate = this._delegate
         tfFunc._debug = this._debug
+        tfFunc._changedProps = [...this._changedProps]
 
         tfFunc.installedEvents = [...this.installedEvents]
         
@@ -641,6 +658,13 @@ export class TokenFunction {
         const newTokenFunction = new TokenFunction() 
         newTokenFunction._func = func.bind(newTokenFunction)
         return newTokenFunction
+    }
+    
+    //!THIS WORKS BUT WE NEED TO SAVE FUNC CALLS AND PARAM, AND USE THOSE TO APPLY CHANGES UP OR TOKEN FUNCTION CHAINS 
+    _markedChanged(propName) { 
+        if(propName == undefined) return; 
+        if(this._changedProps.includes(propName)) return; 
+        this._changedProps.push(propName)
     }
 
     _setConversionMap(conversionMap) { 
@@ -663,6 +687,8 @@ export class TokenFunction {
             }
         }
         this.collapseObjectMappers = [...objectMappers]
+        this._markedChanged("collapseObjectMappers")
+        
         return this 
     }
 
@@ -694,6 +720,11 @@ export class TokenFunction {
         this._delegate = shouldDelegate; 
     }
 
+    /**
+     * @deprecated
+     * @param {*} shift 
+     * @returns 
+     */
     shift(shift) { 
         this._shift = shift 
         return this 
@@ -701,9 +732,11 @@ export class TokenFunction {
 
     optional(optional=true) { 
         this._optional = optional
+        this._markedChanged("_optional")
         return this 
     }
     opt(optional=true) { 
+        this._markedChanged("_optional")
         return this.optional(optional)
     }
 
@@ -723,11 +756,13 @@ export class TokenFunction {
 
     name(name) { 
         this._name = name 
+        this._markedChanged("_name")
         return this 
     }
 
     delete(shouldDelete=true) { 
         this._delete = shouldDelete
+        this._markedChanged("_delete")
         return this 
     }
 
@@ -735,6 +770,12 @@ export class TokenFunction {
         return this._name 
     }
 
+    /**
+     * ! Not sure if this is still in use, might need to check for this in the transformer.
+     * @deprecated
+     * @param {*} tf 
+     * @returns 
+     */
     propagate(tf=true) { 
         this._propagate = tf 
         return this 
@@ -760,9 +801,15 @@ export class TokenFunction {
 
     join(join=true) { 
         this._join = join 
+        this._markedChanged("_join")
         return this 
     }
 
+    /**
+     * @deprecated
+     * @param {*} func 
+     * @returns 
+     */
     transformState(func) { 
         this.stateTransformer = func; 
         return this 
@@ -792,6 +839,7 @@ export class TokenFunction {
             throw new Error("TokenFunction.push() requires type string, got " + typeof(_pushKey))
         }
         this.pushKey = _pushKey
+        this._markedChanged("pushKey")
         return this 
     }
 
@@ -872,9 +920,19 @@ export class ObjectMapper {
     }
 }
 
-console.log("TT")
-const newObj = select("aaa").rename("bbb").push(true).map(
-    {age: 25, _name: ["alex"]},
-    {name: "liam"}
-)
-console.log(">>", newObj)
+// console.log("TT")
+// const newObj = select("aaa").rename("bbb").push(true).map(
+//     {age: 25, _name: ["alex"]},
+//     {name: "liam"}
+// )
+// console.log(">>", newObj)
+
+// const tf1 = new TokenFunction()
+// tf1.name("James")
+
+// const tf2 = new TokenFunction()
+// tf1.applyChangesTo(tf2)
+
+// const tf3 = new TokenFunction()
+// tf2.applyChangesTo(tf3)
+// console.log(tf3._name)

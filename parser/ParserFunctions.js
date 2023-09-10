@@ -16,6 +16,7 @@ export function CaptureUntil (...disallowedStringsArray) {
   
 export const Or = (...tokenFunctions) => { 
     let hasSaved = false 
+    let savingTfFunc = undefined
     let removed = []
    
     return TokenFunction.from(function({self, state, end}){
@@ -33,7 +34,7 @@ export const Or = (...tokenFunctions) => {
                 return TokenOperations.REJECT
             }; 
 
-            let op = tfFunc.call({self, state})
+            let op = tfFunc.call({self, state, end})
             
             if(op == TokenOperations.REJECT) {
                 removed.push(tfFunc)
@@ -41,21 +42,25 @@ export const Or = (...tokenFunctions) => {
             }
             if(op == TokenOperations.ACCEPT) {
                 removed = []
-                self.delegateTo(tfFunc)
+                tfFunc.applyChangesTo(self)
                 return TokenOperations.ACCEPT
             };
             if(op == TokenOperations.LOAD) {
                 removed = [] //issue here?
                 if(hasSaved == true) { 
-                    self.delegateTo(tfFunc)
+                    tfFunc.applyChangesTo(self)
                     return TokenOperations.LOAD;
                 }
             }
             if(op == TokenOperations.SAVE) {
                 shouldSave = true 
+                savingTfFunc = tfFunc
             }
         }
         if(shouldSave == true) { 
+            if(end == true && savingTfFunc != undefined) {
+                savingTfFunc.applyChangesTo(self)
+            }
             endCheck()
             hasSaved = true
             return TokenOperations.SAVE
