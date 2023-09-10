@@ -20,16 +20,15 @@ import { Alphabetical, Numerical, Or, Space, StringMatch, TypeMatch } from "../.
 import { $if } from "../../parser/ConditionalSystem.js";
 
 let segList = new SegmentList()
-segList.append([`abcde`])
+segList.append([`wz`])
 
 segList = segList.find([
-  $if(StringMatch("a").push("letters"))
+  $if(StringMatch("a").push("lettersa").opt())
   .then(
-    $if(StringMatch("b").push("letters")).then(
-      StringMatch("c").push("letters")
-    ).end() 
-  ) 
-  .end(),
+    StringMatch("b").push("letters")
+  ).else(
+    StringMatch("z").push("letters")
+  ).end(),
 ]).transform("transformation")
 
 

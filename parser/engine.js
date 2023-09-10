@@ -78,13 +78,16 @@ export class Transformer {
 
                 for(const satisfiedTfFunctionData of tListing.satisfiedTokenFunctions) { 
                     let tfFunc = satisfiedTfFunctionData.tfFunc 
-                    if(tfFunc._delegate == true) { 
-                        tfFunc = tfFunc._delegation == undefined ? tfFunc : tfFunc._delegation
-                    }
+                    // if(tfFunc._delegate == true) { 
+                    //     tfFunc = tfFunc._delegation == undefined ? tfFunc : tfFunc._delegation
+                    // }
                     //if(tfFunc.pushKey != undefined) debugger; 
 
                     let tfFuncStateArray = satisfiedTfFunctionData.state != undefined 
                         ? [...satisfiedTfFunctionData.state] : []
+
+                    //Can sometimes happen with optional tfFunctions that hasn't matched, which means 0 state 
+                    if(tfFuncStateArray.length <= 0) continue; 
 
                     //! Probably need to move this if we no longer support state transformers 
                     if(tfFunc.stateTransformer != undefined) { 
@@ -457,6 +460,9 @@ export class SegmentList {
                 }
 
                 if(tokenOperation == TokenOperations.NEXT) { 
+                    /*If we're at the last token, and the tfFunc is optional, and if we have another tf
+                        func to evaluate, move onto next tfFunc
+                    */
                     if(endOfLoop == true 
                         && currentTokenObject.tfFunc.isOptional() == true
                         && atLastToken == false 
@@ -466,6 +472,17 @@ export class SegmentList {
                         nextTokenFunction() 
                         endIndex = startIndex
                     } 
+
+                    /*
+                        If the operation is next but we're at the end of the loop, it needs to be treated as a 
+                        reject. Pretty much a copy paste of the reject operation 
+                    */
+                   if(endOfLoop == true) { 
+                        setTokenFunctionsDefault() 
+                        reset(true) 
+                        currentTokenObject.tfFunc?.fire(TokenOperations.REJECT, EventContext)
+                        break
+                   }
                     continue 
                     
                 }

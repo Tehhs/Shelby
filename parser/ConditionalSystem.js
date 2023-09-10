@@ -7,7 +7,7 @@ import { TokenFunction, TokenOperations } from "./Engine.js";
  */
 export const $if = (conditionalTokenFunction) => { 
   const generator = new ConditionalTokenFunctionGenerator();
-  generator.setConditional(conditionalTokenFunction)
+  generator.setConditional(conditionalTokenFunction.opt(true))
   return generator; 
 }
 
