@@ -30,6 +30,11 @@ export const TokenOperations = {
     NEXT: "NEXT" //kinda like save, but SAVE ends up loading on end of input, NEXT should not have that issue and should be used with ACCEPT OR REJECT, NO LOAD 
 }
 
+export const EngineEvents = { 
+    PARSER_BEGIN: "PARSER_BEGIN",
+    OPERATION_EVALUATED: "OPERATION_EVALUATED"
+}
+
 export class TransformerListing { 
     constructor(start, end, tokenFunctionArray) { 
         this.start = start
@@ -281,7 +286,7 @@ export class SegmentList {
         //Easy to enter undefined entries into array if you have more than one comma [...,,...]
         TokenFunctions = TokenFunctions.filter(tf => tf != undefined)
 
-        //flatten the array 
+        //flatten the array //! Actually we dont really want arrays being inputted. If you need array, have a token function that acts as an array of other token functions 
         TokenFunctions = TokenFunctions.flat(Infinity); 
 
         //check to make sure all "TokenFunctions" are indeed instanceof TokenFunction 
@@ -291,6 +296,7 @@ export class SegmentList {
             }
         }
 
+       
         const eSegments = expandSegments(this.segments)
 
         const TokenFunctionToTokenObject = (tf) => { 
@@ -312,7 +318,46 @@ export class SegmentList {
         }
         setTokenFunctionsDefault() 
 
-        
+        function _error_if_not_type(the_type, param) { 
+            if(param instanceof the_type) return; 
+            throw new Error(`${param} not type ${the_type}`)
+        }
+
+        function getTokenFunctionObject(tokenFunction) { 
+            if( (tokenFunction instanceof TokenFunction) == false) { 
+                return undefined; 
+            }
+            for(const tokenObject of satisfiedTokenFunctions) { 
+                if(tokenObject.tfFunc != tokenFunction) continue; 
+                return tokenObject; 
+            }
+            return undefined; //duhh
+        }
+        function getTokenFunctionObjects(...tokenFunctions) { 
+            return [...tokenFunctions.map(tf => getTokenFunctionObject(tf))]
+        }
+
+        let tokenFunctionObjectChanged = false; 
+        function shiftToTokenFunctionIndex(index){ 
+            if(index == undefined) { 
+                index = tokenFunctionsIndex; 
+            }
+            tokenFunctionObjectChanged = true 
+            tokenFunctionsIndex = index 
+        }
+        function tokenFunctionToIndex(tokenFunction) { 
+            for(const [i, tokenObject] of satisfiedTokenFunctions.entries()) { 
+                if(tokenObject.tfFunc == tokenFunction) { 
+                    return i; 
+                }
+            }
+            return undefined; 
+        }
+        function shiftToTokenFunction(tokenFunction) { 
+            _error_if_not_type(TokenFunction, tokenFunction)
+            shiftToTokenFunctionIndex(tokenFunctionToIndex(tokenFunction))
+            //ensure tokenFunctionIndex in bounds? Might not have to, because if out of bounds, then forces parse loop to close.
+        }
 
         let startIndex = 0
         let tokenFunctionsIndex = 0 
@@ -360,16 +405,54 @@ export class SegmentList {
                 tokenFunctionsIndex = 0 
             }
         }
+
+        //Context/Params for event calls 
+        let EventContext = { 
+            newTokenFunctionRequirement,
+            shiftToTokenFunction, 
+            shiftToTokenFunctionIndex,
+            tokenFunctionToIndex,
+            tokenFunctionsIndex,
+            tokenFunctionObjects: satisfiedTokenFunctions
+        }
+
+        //Parser begin events on the token functions; if new tokenFunctions added, call PARSER_BEGIN on them too 
+        let TfsThatHaveCalledParserBegin = [] 
+        while(true) { 
+            let breakLoop = true
+            for(const [tfoIndex, tfo] of satisfiedTokenFunctions.entries()) { 
+                const tf = tfo.tfFunc
+                if(tf == undefined) continue; 
+
+                if(!TfsThatHaveCalledParserBegin.includes(tf)) { 
+
+                    //!REALLY UGLY EFFECTIVE CODE. tokenFunctionsIndex needs to be changed here in case 
+                    //!the event handler calls functions like newTokenFunctionRequirement() which uses 
+                    //!tokenFunctionsIndex to work out where to place the new TokenFunction. 
+                    //!Would be fixed by rewriting this entire function with functional style code? 
+                    tokenFunctionsIndex = tfoIndex
+
+                    tf.fire(EngineEvents.PARSER_BEGIN, EventContext)
+                    TfsThatHaveCalledParserBegin.push(tf)
+
+                    //restart the loop 
+                    breakLoop = false 
+                    break 
+                }
+            }
+            if(breakLoop == true) { 
+                break; 
+            }
+        }
+        tokenFunctionsIndex = 0
         
-        let rejected = false 
+       
+        //let rejected = false 
         for(startIndex = 0; startIndex < eSegments.length; startIndex++) { 
 
+            let restartLoop = false 
             for(let endIndex = startIndex + 1; endIndex <= eSegments.length; endIndex++) { 
                
-                const EventContext = { 
-                    newTokenFunctionRequirement
-                }
-                
                 const endOfLoop = endIndex >= eSegments.length
                 if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
                     completedSets = [...completedSets, satisfiedTokenFunctions]
@@ -381,7 +464,7 @@ export class SegmentList {
 
                 let currentTokenObject = satisfiedTokenFunctions[tokenFunctionsIndex]
                 if(currentTokenObject == undefined) { 
-                    debugger 
+                    debugger //this can now happen as event listeners now can literally change the token function index 
                 }
 
                 if(currentTokenObject.tfFunc._debug == true) { 
@@ -398,13 +481,30 @@ export class SegmentList {
 
                 const atLastToken = (tokenFunctionsIndex+1) >= satisfiedTokenFunctions.length
 
-                //debugger
+                debugger
                 let tokenOperation = currentTokenObject.tfFunc.call({
                     state: subExtendedSegments, 
                     self: currentTokenObject.tfFunc,
                     end: endOfLoop
                 })
-                //debugger
+                function changeTokenOperation(operation) {
+                    if(operation == undefined) return; 
+                    tokenOperation = operation
+                }
+                EventContext = { 
+                    ...EventContext, 
+                    operationEvaluation: tokenOperation,
+                    changeTokenOperation
+                }
+                debugger
+                currentTokenObject.tfFunc.fire(EngineEvents.OPERATION_EVALUATED, EventContext)
+                if(tokenFunctionObjectChanged == true) { 
+                    //Restart the loop on the new TokenFunction 
+                    tokenFunctionObjectChanged = false; 
+                    endIndex -= 1 
+                    continue 
+                }
+                debugger
                
                 if(tokenOperation == undefined) { 
                     throw new Error("Got Undefined TokenOperation")
@@ -600,6 +700,7 @@ export class TokenFunction {
         this._delegate = false 
         this._debug = false 
         this._changedProps = []
+        this._tokenFunctions = []
 
         //values we dont want cloned 
         this.pushKey = undefined 
@@ -608,6 +709,15 @@ export class TokenFunction {
         //probably should just use NodeJS Event handler but I love programming things on my own so idc
         //[..., {eventName: 'eventName', func: () => {} }]
         this.installedEvents = []
+    }
+
+    addTokenFunction(tokenFunction) { 
+        if(!(tokenFunction instanceof TokenFunction)) return 
+        this._tokenFunctions.push(tokenFunction)
+    }
+
+    getTokenFunctions() { 
+        return this._tokenFunctions; 
     }
 
     applyChangesTo(tokenFunction) { 
@@ -669,6 +779,13 @@ export class TokenFunction {
         const newTf = new TokenFunction() 
         newTf.tags.push('self')
         return newTf 
+    }
+
+    static empty() { 
+        const newTf = TokenFunction.from(()=>{
+            return TokenOperations.REJECT
+        }).opt() 
+        return newTf; 
     }
 
     static from(func) { 

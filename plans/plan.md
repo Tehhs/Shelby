@@ -73,8 +73,22 @@ java_method_decl = access_type, static_keyword.opt, return_type, name
 
 
 
+#name = 4 
+variable = Sequence(
+    StringM("#").reference("stringmatch1"), 
+    Alphabetical().actor()
+)
 
+variable().name("variable")
 
+ALSO FOR OR LOGIC 
+in the events, there should be a function where you put in the tf and get returned the tfobjs 
+    and maybe store the last returned state of each tfobj
 
+    so at the end of the or list (list pushed in and is flat) we can check the statuses of each 
+
+    a way to mutate every reject into nextTokenFunction() 
+
+    if accept before list end, a way to skip() to desired token function + offset
 
 
