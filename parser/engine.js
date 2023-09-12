@@ -295,6 +295,15 @@ export class SegmentList {
                 throw new Error(`${tf} is not a TokenFunction`)
             }
         }
+        //debugger
+        //unfolding the token functions if they need to be unfolded 
+        TokenFunctions = TokenFunctions.map(tf => {
+            if(tf.getTokenFunctions().length > 0) { 
+                return tf.unfold()
+            } else { 
+                return tf; 
+            }
+        }).flat(Infinity)
 
        
         const eSegments = expandSegments(this.segments)
@@ -481,7 +490,7 @@ export class SegmentList {
 
                 const atLastToken = (tokenFunctionsIndex+1) >= satisfiedTokenFunctions.length
 
-                debugger
+                //debugger
                 let tokenOperation = currentTokenObject.tfFunc.call({
                     state: subExtendedSegments, 
                     self: currentTokenObject.tfFunc,
@@ -496,7 +505,7 @@ export class SegmentList {
                     operationEvaluation: tokenOperation,
                     changeTokenOperation
                 }
-                debugger
+                //debugger
                 currentTokenObject.tfFunc.fire(EngineEvents.OPERATION_EVALUATED, EventContext)
                 if(tokenFunctionObjectChanged == true) { 
                     //Restart the loop on the new TokenFunction 
@@ -504,7 +513,7 @@ export class SegmentList {
                     endIndex -= 1 
                     continue 
                 }
-                debugger
+                //debugger
                
                 if(tokenOperation == undefined) { 
                     throw new Error("Got Undefined TokenOperation")
@@ -681,6 +690,10 @@ export class SegmentList {
     
 }
 
+export function Group(...tokenFunctions) { 
+    return TokenFunction.Array(tokenFunctions)
+}
+
 export class TokenFunction { 
     constructor() { 
         //any changes here, make sure clone() copies the changes 
@@ -711,13 +724,34 @@ export class TokenFunction {
         this.installedEvents = []
     }
 
-    addTokenFunction(tokenFunction) { 
-        if(!(tokenFunction instanceof TokenFunction)) return 
-        this._tokenFunctions.push(tokenFunction)
+    addTokenFunction(tokenFunctions=[]) { 
+        if(!Array.isArray(tokenFunctions)) tokenFunctions = [tokenFunctions]
+
+        for(const tf of tokenFunctions) { 
+            if(!(tf instanceof TokenFunction)) return 
+            this._tokenFunctions.push(tf)
+        }
     }
 
     getTokenFunctions() { 
         return this._tokenFunctions; 
+    }
+
+    getAppliedTokenFunctions() { 
+        return this.getTokenFunctions(); 
+    }
+
+    unfold() { 
+        let unfoldedTokenFunctions = [];
+        for(const tf of this.getTokenFunctions()) { 
+            if(tf.getTokenFunctions().length > 0) { 
+                unfoldedTokenFunctions.push(tf.unfold());
+            } else { 
+                unfoldedTokenFunctions.push(tf);
+            }   
+
+        }
+        return unfoldedTokenFunctions.flat(Infinity);
     }
 
     applyChangesTo(tokenFunction) { 
@@ -792,6 +826,14 @@ export class TokenFunction {
         const newTokenFunction = new TokenFunction() 
         newTokenFunction._func = func.bind(newTokenFunction)
         return newTokenFunction
+    }
+
+    static Array(tokenFunctions) { 
+        if(!Array.isArray(tokenFunctions)) tokenFunctions = [tokenFunctions]
+
+        const newTokenFunction = new TokenFunction()
+        newTokenFunction.addTokenFunction(tokenFunctions)
+        return newTokenFunction;
     }
     
     //!THIS WORKS BUT WE NEED TO SAVE FUNC CALLS AND PARAM, AND USE THOSE TO APPLY CHANGES UP OR TOKEN FUNCTION CHAINS 
@@ -1070,3 +1112,17 @@ export class ObjectMapper {
 // const tf3 = new TokenFunction()
 // tf2.applyChangesTo(tf3)
 // console.log(tf3._name)
+
+// const tf1 = (new TokenFunction()).setFunctionName("tf1")
+// const tf2 = (new TokenFunction()).setFunctionName("tf2")
+// const tf3 = (new TokenFunction()).setFunctionName("tf3") 
+// const tf4 = (new TokenFunction()).setFunctionName("tf4") 
+// const tf5 = (new TokenFunction()).setFunctionName("tf5") 
+
+// tf1.addTokenFunction(tf2)
+// tf1.addTokenFunction(tf3)
+// tf1.addTokenFunction(tf4)
+
+// tf5.addTokenFunction(tf1)
+
+// console.log(tf2.unfold())

@@ -13,38 +13,38 @@ export function CaptureUntil (...disallowedStringsArray) {
     )
 }
 
-export const Group = (...tokenFunctions) => { 
-    if(tokenFunctions.length <= 0) return TokenFunction.empty()
+// export const Group = (...tokenFunctions) => { 
+//     if(tokenFunctions.length <= 0) return TokenFunction.empty()
 
-    const success = [TokenOperations.ACCEPT, TokenOperations.LOAD]
-    const failure = [TokenOperations.REJECT]
-    for(const [index, tf] of tokenFunctions.entries()) { 
-        const nextTf = tokenFunctions[index+1]
-        if(nextTf == undefined) break; 
+//     const success = [TokenOperations.ACCEPT, TokenOperations.LOAD]
+//     const failure = [TokenOperations.REJECT]
+//     for(const [index, tf] of tokenFunctions.entries()) { 
+//         const nextTf = tokenFunctions[index+1]
+//         if(nextTf == undefined) break; 
 
         
-        tf.on(EngineEvents.PARSER_BEGIN, ({newTokenFunctionRequirement}) => { 
-            newTokenFunctionRequirement(nextTf)
-        })
+//         tf.on(EngineEvents.PARSER_BEGIN, ({newTokenFunctionRequirement}) => { 
+//             newTokenFunctionRequirement(nextTf)
+//         })
 
-        const oldFunc = tf._func
-        tf._func = () => { 
-            const result = oldFunc() 
-            w3
-        }
+//         const oldFunc = tf._func
+//         tf._func = () => { 
+//             const result = oldFunc() 
+//             w3
+//         }
         
-    }
+//     }
 
-    const OneOfTf = TokenFunction.empty()
-    OneOfTf.on(EngineEvents.PARSER_BEGIN, ({newTokenFunctionRequirement}) => {
-        if(tokenFunctions.length > 0) { 
-            //debugger
-            newTokenFunctionRequirement(tokenFunctions[0])
-        }
-    })
+//     const OneOfTf = TokenFunction.empty()
+//     OneOfTf.on(EngineEvents.PARSER_BEGIN, ({newTokenFunctionRequirement}) => {
+//         if(tokenFunctions.length > 0) { 
+//             //debugger
+//             newTokenFunctionRequirement(tokenFunctions[0])
+//         }
+//     })
 
-    return OneOfTf.setFunctionName("GroupTokenFunction"); 
-}
+//     return OneOfTf.setFunctionName("GroupTokenFunction"); 
+// }
   
 export const Or = (...tokenFunctions) => { 
     let hasSaved = false 
