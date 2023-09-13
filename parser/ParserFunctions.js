@@ -1,4 +1,4 @@
-import { TokenOperations, TokenFunction, EngineEvents } from "./Engine.js";
+import { TokenOperations, TokenFunction, EngineEvents, Group } from "./Engine.js";
 
 export function CaptureUntil (...disallowedStringsArray) { 
     return TokenFunction.from(
@@ -235,4 +235,37 @@ export const StringMatch2 = (str) => {
 
     //     console.log(valid) 
     // })
+}
+
+export const OrGroup = (...tokenFunctions) => { 
+    const lastTokenFunction = tokenFunctions[tokenFunctions.length-1]
+
+    const success = [TokenOperations.ACCEPT, TokenOperations.LOAD]
+    const failure = [TokenOperations.REJECT]
+
+    const skipToLast = (context, {self}) => { 
+        //skip to after last IF success 
+        if(success.includes(context.operationEvaluation)) { 
+            context.shiftToTokenFunction(lastTokenFunction, 1)
+        } 
+    }
+    const setToOptional = (context, {self}) => { 
+        //set self to optional if fail (or just set all to optional except the last)
+        if(failure.includes(context.operationEvaluation)) { 
+            self.opt()
+        }
+    }
+
+  
+
+    for(const tf of tokenFunctions) { 
+        if(tf != lastTokenFunction) { 
+            tf.opt()
+            tf.on(success, skipToLast)
+            //tf.on(failure, setToOptional)
+        } 
+    }
+
+    return Group(...tokenFunctions)
+    
 }

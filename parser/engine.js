@@ -362,9 +362,9 @@ export class SegmentList {
             }
             return undefined; 
         }
-        function shiftToTokenFunction(tokenFunction) { 
+        function shiftToTokenFunction(tokenFunction, offset=0) { 
             _error_if_not_type(TokenFunction, tokenFunction)
-            shiftToTokenFunctionIndex(tokenFunctionToIndex(tokenFunction))
+            shiftToTokenFunctionIndex(tokenFunctionToIndex(tokenFunction)+offset)
             //ensure tokenFunctionIndex in bounds? Might not have to, because if out of bounds, then forces parse loop to close.
         }
 
@@ -465,9 +465,11 @@ export class SegmentList {
                 const endOfLoop = endIndex >= eSegments.length
                 if(tokenFunctionsIndex >= satisfiedTokenFunctions.length) {
                     completedSets = [...completedSets, satisfiedTokenFunctions]
-                    startIndex = endIndex - 1
+                    startIndex = endIndex //- 1
                     tokenFunctionsIndex = 0 
                     setTokenFunctionsDefault() 
+
+                    continue
                 }; 
                 const subExtendedSegments = eSegments.slice(startIndex, endIndex)
 
