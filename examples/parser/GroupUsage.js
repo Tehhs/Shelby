@@ -20,9 +20,8 @@ segList = segList.find([
     StringMatch("let").name("__"),
     StringMatch("pin").name("__"), 
     StringMatch("var").name("__")
-  ),
+  ).name("CC"),
   StringMatch(":")
-  //!NEXT, we want to do Variable().name("name") to affect the main token function in the group
 ]).transform("variable")
 
 console.log("FINAL =", JSON.stringify(segList, null, " "))

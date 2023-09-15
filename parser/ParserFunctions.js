@@ -249,14 +249,16 @@ export const OrGroup = (...tokenFunctions) => {
             context.shiftToTokenFunction(lastTokenFunction, 1)
         } 
     }
-    const setToOptional = (context, {self}) => { 
-        //set self to optional if fail (or just set all to optional except the last)
-        if(failure.includes(context.operationEvaluation)) { 
-            self.opt()
-        }
-    }
+    // const setToOptional = (context, {self}) => { 
+    //     //set self to optional if fail (or just set all to optional except the last)
+    //     if(failure.includes(context.operationEvaluation)) { 
+    //         self.opt()
+    //     }
+    // }
 
-  
+    const applyGroupToMatched = (context, {self}) => { 
+        groupTokenFunction.applyChangesTo(self)
+    }
 
     for(const tf of tokenFunctions) { 
         if(tf != lastTokenFunction) { 
@@ -264,8 +266,11 @@ export const OrGroup = (...tokenFunctions) => {
             tf.on(success, skipToLast)
             //tf.on(failure, setToOptional)
         } 
+        tf.on(success, applyGroupToMatched);
     }
 
-    return Group(...tokenFunctions)
+    const groupTokenFunction = Group(...tokenFunctions)
+
+    return groupTokenFunction; 
     
 }

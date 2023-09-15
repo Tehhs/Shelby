@@ -2,7 +2,7 @@ import { compactSegments, expandSegments, multiSegmentReplace, split } from "./i
 import fs from 'fs'
 
 /**
- * This needs to be document because I keep forgetting what this signals even mean
+ * This needs to be documented because I keep forgetting what these signals even mean.
  * SAVE = The current state is acceptable (and will be accepted on end of input) BUT future input/state
  *  might be also acceptable. So SAVE saves the state and moves forward with input. This might be useful
  *  for capturing state for input you can't exactly string match for. Like alphanumeric input captures.
@@ -19,6 +19,11 @@ import fs from 'fs'
  * input IS acceptable, but future input might also be acceptable to we're not exactly saving the current 
  * input at the current point in the input. 
  * So basically: SAVE=Accept but next token might be valid too, SAVE != MAYBE ACCEPTABLE 
+ * 
+ * If this system is going to be refactored for the third time, why do we need a LOAD when SAVE is always 
+ * a valid state? Should use a system where each token object keeps track of last saved state, and upon 
+ * rejection it just moves onto next token functino. (if rejfected with 0 state then reject the entire set)
+ * this would probably remove the need for NEXT too
  * 
  */
 export const TokenOperations = {

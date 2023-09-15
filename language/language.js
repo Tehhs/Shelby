@@ -1,18 +1,34 @@
 
 
-import { SegmentList, TokenFunction, TokenOperations, select } from "../parser/Engine.js";
-import { Alphabetical, Alphanumeric, CaptureUntil, MultiStringMatch, Numerical, Or, Space, StringMatch, TypeMatch } from "../parser/ParserFunctions.js";
+import { Group, SegmentList, TokenFunction, TokenOperations, select } from "../parser/Engine.js";
+import { Alphabetical, Alphanumeric, CaptureUntil, MultiStringMatch, Numerical, Or, OrGroup, Space, StringMatch, TypeMatch } from "../parser/ParserFunctions.js";
 import { $if } from "../parser/ConditionalSystem.js";
 
 
 let segList = new SegmentList()
 segList.append([`
 
+//Create a variable with limits 
+let 0<i<10 = 0
+
 //Create a variable without limits
-le4tr i_two = 1000
+let i2 = 1000
 
 //Create a variable that reacts to changes in variable i
-l3et b = i / 2
+let b = $i / 2
+
+//Objects that will also auto-update and react to changes in variable i
+let c = {num: $i}
+
+//variable which inforces number type 
+number n = 8
+
+//conditional block of code that will auto-run when changes to both variable i and variable b occur 
+if $i == 5 then 
+    print("variable i equals five")
+else
+    print("variable i does not equal five")
+end 
 
 `])
 segList.processStrings() 
@@ -21,32 +37,33 @@ segList.processStrings()
 /*
     Process the comments 
 */
-segList = segList.find([
-    StringMatch("//"),
-    CaptureUntil("\n").name("comment").join()
-]).transform("comment")
-
-/*
-    Find the expressions
-*/
-const Variable = () => Group(StringMatch("$"), Alphabetical()).name("VVV") //! grouping not supported yet
-const Number = () => Numerical()
-const StringType = () => TypeMatch("string")
-const Operation = () => Or(StringMatch("/"), StringMatch("*"), StringMatch("+"), StringMatch("-"))
-const Operand = () => Or(
-    Variable(), 
-    Number()
+const Comment = () => Group(
+    StringMatch("//").ref("comment_start"),
+    CaptureUntil("\n").name("comment").join().main("text")
 )
 segList = segList.find([
-    Operand().name("operand1"),
-    Space().opt().name("?"),
-    Operation().name("operation"),
-    Space().opt().name("??"),
-    Operand().name("operand2")
-]).transform("expression")
+    Comment()
+]).transform("comment")
 
 
-
+/* 
+    Process the expressions, example: 
+        1 + 1 
+        A + 2 
+        A / B 
+*/
+const Number = () => Numerical().name("value")
+const VariableName = () => Alphanumeric().name("name")
+const Operator = () => OrGroup(StringMatch("+"), StringMatch("-"), StringMatch("/"), StringMatch("*"))
+const Operand = () => OrGroup(Number(), VariableName())
+const Expression = Group(
+    Operand().name //! not the group needs name() and probably other shit like passing on events omg
+    //! doing this for the OrGroup is easy, just use the one it m atches 
+    //! focus on the Group()  
+)
+segList = segList.find([
+    Comment()
+]).transform("comment")
 
 console.log("FINAL =", JSON.stringify(segList, null, " "))
 
