@@ -2,8 +2,8 @@ Despite how expressive JS is, there are things that get a little annoying.
 
 ```js
 
-  const Alphanumerical = Shelby.parser(
-    Shelby.OR(String(), Number())`Alphanumberical`
+  const Alphanumerical = Shelby`Alphanumberical`(
+    Shelby.OR(String(), Number())
   )
 
   Shelby(str).parse(
