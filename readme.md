@@ -1,3 +1,9 @@
+# Todo
+
+Need to start using Typescript in this project as it's getting difficult managing all this undocumented non-typed JS code. I also want to start using 
+Deno as they support typescript without config which sounds nice. 
+
+
 # Parser Language 
 
 $tagName = "Liam" || "Alex" 
